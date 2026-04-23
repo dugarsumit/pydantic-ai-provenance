@@ -25,8 +25,9 @@ The page loads Cytoscape.js and the dagre layout plugin from CDN, so a network c
 - Left-to-right dagre layout matching the natural data-flow direction
 - Color-coded nodes by type (same palette as Mermaid / DOT)
 - Distinct node shapes per type: barrel for data sources, diamond for model steps, ellipse for final outputs, etc.
-- Sidebar legend showing only the node types present in the graph
-- Click any node to inspect its label, type, agent, run ID, timestamp, and any extra metadata
+- **Citation key borders** — nodes with a registered citation key get a colored border: amber for data sources (`d_*`), blue for agent outputs (`a_*`). The key is also appended to the node label as `[d_1]`.
+- Sidebar legend showing node types and, when citation keys are present, a citation key section with matching border swatches
+- Click any node to inspect its label, type, citation key (highlighted in blue), agent, run ID, timestamp, and any extra metadata
 
 ---
 
@@ -102,7 +103,7 @@ print(store.to_json_str(indent=2))
 
 ### Schema
 
-**Node**
+**Node** — `citation_key` is only present when the node has a registered citation key.
 
 ```json
 {
@@ -112,7 +113,8 @@ print(store.to_json_str(indent=2))
   "agent_name": "summariser",
   "run_id": "...",
   "timestamp": "2024-01-01T00:00:00+00:00",
-  "data": { "file_path": "report.txt" }
+  "data": { "file_path": "report.txt" },
+  "citation_key": "d_1"
 }
 ```
 

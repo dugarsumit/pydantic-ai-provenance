@@ -12,7 +12,7 @@
 - Tags with a **mix** of valid and invalid keys are reduced to the valid subset: `[REF|d_1|bad_key]` → `[REF|d_1]`.
 
 ```python
-from pydantic_ai_provenance import strip_unresolvable_citation_keys
+from pydantic_ai_provenance.verification import strip_unresolvable_citation_keys
 
 sanitized, records = strip_unresolvable_citation_keys(text, store)
 for r in records:
@@ -89,7 +89,7 @@ For higher-confidence checks, `entailment_agent` wraps a pydantic-ai agent that 
 
 ```python
 from pydantic_ai import Agent
-from pydantic_ai_provenance import entailment_agent
+from pydantic_ai_provenance.verification import entailment_agent
 
 judge = entailment_agent("anthropic:claude-haiku-4-5-20251001")
 

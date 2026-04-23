@@ -63,6 +63,12 @@ store.register_agent_output(node_id: str) -> str
 store.resolve_citation(key: str) -> str | None
 store.citation_key_for_node(node_id: str) -> str | None
 store.citation_summary() -> dict[str, dict]
+store.to_html(title: str = "Provenance Graph") -> str
+store.open_in_browser(title: str = "Provenance Graph") -> None
+store.to_mermaid() -> str
+store.to_dot(graph_name: str = "provenance") -> str
+store.to_json() -> dict[str, Any]
+store.to_json_str(indent: int = 2) -> str
 ```
 
 | Method | Returns | Description |
@@ -326,13 +332,31 @@ class CitationVerificationReport:
 
 ## Visualization
 
-Available as methods on `ProvenanceStore`.
+All visualization methods are on `ProvenanceStore` (listed in the `ProvenanceStore` method block above). The `to_json()` dict schema is:
 
-| Method | Description |
-|---|---|
-| `store.to_html(title="Provenance Graph")` | Self-contained interactive HTML page (Cytoscape.js) |
-| `store.open_in_browser(title="Provenance Graph")` | Write HTML to a temp file and open in the default browser |
-| `store.to_mermaid()` | Mermaid flowchart string |
-| `store.to_dot(graph_name="provenance")` | GraphViz DOT string |
-| `store.to_json()` | `dict` with `nodes` and `edges` |
-| `store.to_json_str(indent=2)` | JSON string |
+**Node** — `citation_key` is only present when the node has a registered citation key.
+
+```json
+{
+  "id": "...",
+  "type": "data_read",
+  "label": "[source] Tool: read_file",
+  "agent_name": "summariser",
+  "run_id": "...",
+  "timestamp": "2024-01-01T00:00:00+00:00",
+  "data": { "file_path": "report.txt" },
+  "citation_key": "d_1"
+}
+```
+
+**Edge**
+
+```json
+{
+  "source": "<node_id>",
+  "target": "<node_id>",
+  "label": "cited_in"
+}
+```
+
+See [Visualization guide](guides/visualization.md) for full details.

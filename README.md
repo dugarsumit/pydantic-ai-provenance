@@ -24,6 +24,16 @@ Or with [uv](https://docs.astral.sh/uv/):
 uv add pydantic-ai-provenance
 ```
 
+**Install directly from GitHub** (latest development version):
+
+```bash
+pip install git+https://github.com/sumitdugar/pydantic-ai-provenance.git
+```
+
+```bash
+uv add git+https://github.com/sumitdugar/pydantic-ai-provenance
+```
+
 **Requirements:** Python ≥ 3.10, pydantic-ai ≥ 1.80.
 
 ---
@@ -91,7 +101,7 @@ Share the same `ProvenanceCapability` store across a coordinator and its subagen
 
 ```python
 from pydantic_ai import Agent
-from pydantic_ai_provenance import ProvenanceCapability
+from pydantic_ai_provenance.capability import ProvenanceCapability
 
 research_cap = ProvenanceCapability(agent_name="researcher", source_tools=["fetch_url"])
 coord_cap    = ProvenanceCapability(agent_name="coordinator")
@@ -167,6 +177,8 @@ async def main():
 
 | Symbol | Description |
 |---|---|
+| `store.to_html(title="Provenance Graph")` | Self-contained interactive HTML page (Cytoscape.js) |
+| `store.open_in_browser(title="Provenance Graph")` | Write HTML to a temp file and open in the default browser |
 | `store.to_mermaid()` | Mermaid flowchart string |
 | `store.to_dot(graph_name="provenance")` | GraphViz DOT string |
 | `store.to_json()` | `dict` with `nodes` and `edges` lists |
@@ -185,7 +197,7 @@ ANTHROPIC_API_KEY=... uv run python examples/single_agent.py
 # or Azure OpenAI:
 AZURE_OPENAI_ENDPOINT=https://... AZURE_OPENAI_API_KEY=... uv run python examples/single_agent.py
 
-# Multi-agent example
+# Multi-agent example (opens interactive provenance graph in browser after the run)
 ANTHROPIC_API_KEY=... uv run python examples/multi_agent.py
 ```
 

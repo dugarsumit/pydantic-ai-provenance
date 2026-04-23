@@ -26,7 +26,7 @@ Attach `ProvenanceCapability` to any pydantic-ai agent and get a complete, audit
 - **Citation keys** — source tool results are automatically tagged `[REF|d_1]`, `[REF|d_2]` … so the LLM can cite them inline.
 - **Multi-agent attribution** — subagent outputs propagate through a shared store, giving transitive provenance across any number of agent hops.
 - **Citation verification** — TF-IDF cosine overlap (Step 2) and optional LLM entailment (Step 3) validate every `[REF|…]` tag.
-- **Visualisation** — export the provenance graph as Mermaid, GraphViz DOT, or JSON.
+- **Visualisation** — interactive HTML (Cytoscape.js), Mermaid, GraphViz DOT, and JSON exports.
 
 ---
 

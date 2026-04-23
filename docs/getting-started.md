@@ -22,7 +22,7 @@ uv add pydantic-ai-provenance
 
 ```python
 from pydantic_ai import Agent
-from pydantic_ai_provenance import ProvenanceCapability
+from pydantic_ai_provenance.capability import ProvenanceCapability
 
 provenance = ProvenanceCapability(
     agent_name="my-agent",   # label used in the graph
@@ -68,7 +68,7 @@ The `store` is available on the `ProvenanceCapability` instance after the run co
 ### Path-level attribution
 
 ```python
-from pydantic_ai_provenance import attribute_output
+from pydantic_ai_provenance.attribution import attribute_output
 
 attribution = attribute_output(store)
 print(attribution.summary())

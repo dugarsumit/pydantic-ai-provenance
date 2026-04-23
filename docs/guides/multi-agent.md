@@ -117,3 +117,22 @@ assert store_from_coordinator is store_from_researcher  # same object
 
 !!! warning
     Using the same `ProvenanceCapability` instance for **concurrent** overlapping runs is not safe. Create a fresh instance per concurrent run if needed.
+
+---
+
+## Visualising the shared graph
+
+After the run, the shared store contains nodes from all agents. Open it as an interactive Cytoscape.js graph directly from Python:
+
+```python
+store.open_in_browser(title="Multi-Agent Provenance Graph")
+```
+
+Or save to a file:
+
+```python
+html_path = Path("provenance.html")
+html_path.write_text(store.to_html(title="Multi-Agent Provenance Graph"), encoding="utf-8")
+```
+
+Nodes with citation keys are visually distinguished — amber border for data sources (`d_*`), blue border for agent outputs (`a_*`) — making it easy to trace which subagent produced which cited result. See [Visualization](../guides/visualization.md) for the full feature list.
