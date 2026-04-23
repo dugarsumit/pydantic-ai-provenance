@@ -469,7 +469,7 @@ async def example_multi_agent() -> None:
 
 
 if __name__ == "__main__":
-    load_dotenv(Path(__file__).resolve().parent / ".env")
+    load_dotenv(Path(__file__).resolve().parent.parent / ".env")
     if len(sys.argv) > 1 and sys.argv[1] in ("--verify-only", "-V"):
         example_verification_offline()
         raise SystemExit(0)

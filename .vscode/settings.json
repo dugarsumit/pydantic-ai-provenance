@@ -1,0 +1,38 @@
+{
+  "python.analysis.typeCheckingMode": "off",
+  "ruff.importStrategy": "fromEnvironment",
+  "editor.defaultFormatter": "charliermarsh.ruff",
+  "editor.formatOnSave": true,
+  "editor.formatOnPaste": true,
+  "editor.formatOnSaveMode": "file",
+  "editor.codeActionsOnSave": {
+      "source.organizeImports.ruff": "always",
+      "source.fixAll": "never"
+  },
+  "files.autoSave": "onFocusChange",
+  "python.testing.pytestEnabled": true,
+  "python.testing.pytestArgs": [
+      "tests"
+  ],
+  "python.testing.cwd": "${workspaceFolder}",
+  "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
+  "python.terminal.activateEnvironment": true,
+  "files.exclude": {
+    "**/__pycache__": true,
+    "**/.pytest_cache": true,
+    "**/.ruff_cache": true,
+    "**/.git": true,
+    "**/.DS_Store": true,
+    "**/*.pyc": true,
+  },
+  "search.useIgnoreFiles": false,
+  "search.exclude": {
+    "**/__pycache__": true,
+    "**/.pytest_cache": true,
+    "**/.ruff_cache": true,
+    "**/.git": true,
+    "**/.DS_Store": true,
+    "**/*.pyc": true,
+    ".venv": true,
+  },
+}
