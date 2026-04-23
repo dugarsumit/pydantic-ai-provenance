@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from pydantic_ai_provenance.citations import (
     CitationRef,
     citation_tag_spans,
@@ -15,7 +13,6 @@ from pydantic_ai_provenance.citations import (
     strip_inline_citation_tags,
     strip_inline_citation_tags_preserve_leading_ref_header,
 )
-
 
 # ---------------------------------------------------------------------------
 # CitationRef

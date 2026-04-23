@@ -10,18 +10,15 @@ from pydantic_ai_provenance.verification import (
     CitationVerificationReport,
     ClaimSourceSimilarity,
     claim_source_tfidf_cosine,
-    compare_claim_to_sources_tfidf,
     context_before_span,
     refine_claim_source_similarities,
     strip_unresolvable_citation_keys,
-    verify_citations_sync,
+    verify_citations,
 )
 
 
 def _make_node(node_type: NodeType, label: str, **data) -> ProvenanceNode:
-    return ProvenanceNode.create(
-        type=node_type, label=label, agent_name="agent", run_id="r", **data
-    )
+    return ProvenanceNode.create(type=node_type, label=label, agent_name="agent", run_id="r", **data)
 
 
 def _build_store_with_source(source_text: str) -> tuple[ProvenanceStore, str]:
@@ -156,40 +153,40 @@ def test_strip_unresolvable_all_invalid_tag_removed():
 
 
 # ---------------------------------------------------------------------------
-# verify_citations_sync
+# verify_citations
 # ---------------------------------------------------------------------------
 
 
-def test_verify_citations_sync_returns_report():
-    store, key = _build_store_with_source(
-        "The quick brown fox jumps over the lazy dog."
-    )
+@pytest.mark.asyncio
+async def test_async_verify_citations_returns_report():
+    store, key = _build_store_with_source("The quick brown fox jumps over the lazy dog.")
     text = f"A fox appears. [REF|{key}]"
-    report = verify_citations_sync(text, store)
+    report = await verify_citations(text, store)
     assert isinstance(report, CitationVerificationReport)
     assert report.original_text == text
 
 
-def test_verify_citations_sync_aligned_claim_keeps_tag():
-    store, key = _build_store_with_source(
-        "The quick brown fox jumps over the lazy dog near the river."
-    )
+@pytest.mark.asyncio
+async def test_async_verify_citations_aligned_claim_keeps_tag():
+    store, key = _build_store_with_source("The quick brown fox jumps over the lazy dog near the river.")
     text = f"The passage mentions a quick brown fox near the river. [REF|{key}]"
-    report = verify_citations_sync(text, store)
+    report = await verify_citations(text, store)
     assert f"[REF|{key}]" in report.text_with_verified_citations
 
 
-def test_verify_citations_sync_bogus_key_removed():
+@pytest.mark.asyncio
+async def test_async_verify_citations_bogus_key_removed():
     store, _ = _build_store_with_source("fox")
     text = "Claim. [REF|totally_fake]"
-    report = verify_citations_sync(text, store)
+    report = await verify_citations(text, store)
     assert "[REF|totally_fake]" not in report.text_with_verified_citations
 
 
-def test_verify_citations_sync_no_tags_passthrough():
+@pytest.mark.asyncio
+async def test_async_verify_citations_no_tags_passthrough():
     store, _ = _build_store_with_source("fox")
     text = "Plain text without any citation tags."
-    report = verify_citations_sync(text, store)
+    report = await verify_citations(text, store)
     assert report.text_with_verified_citations == text
     assert report.claim_source_similarities == []
 
@@ -199,9 +196,7 @@ def test_verify_citations_sync_no_tags_passthrough():
 # ---------------------------------------------------------------------------
 
 
-def _make_similarity(
-    claim_key: str, source_keys: list[str], scores: list[float]
-) -> ClaimSourceSimilarity:
+def _make_similarity(claim_key: str, source_keys: list[str], scores: list[float]) -> ClaimSourceSimilarity:
     return ClaimSourceSimilarity(
         method="tfidf",
         claim_key=claim_key,
@@ -223,16 +218,12 @@ def test_refine_drops_weak_sources_below_min_score():
 
 def test_refine_keeps_strong_sources():
     rec = _make_similarity("d_1", ["d_1", "d_2"], [0.8, 0.6])
-    result = refine_claim_source_similarities(
-        [rec], min_score_for_shared_source=0.3, max_top_n_keys_per_tag=5
-    )
+    result = refine_claim_source_similarities([rec], min_score_for_shared_source=0.3, max_top_n_keys_per_tag=5)
     assert "d_1" in result[0].source_keys
     assert "d_2" in result[0].source_keys
 
 
 def test_refine_top_n_limits_keys():
     rec = _make_similarity("d_1", ["d_1", "d_2", "d_3"], [0.9, 0.8, 0.7])
-    result = refine_claim_source_similarities(
-        [rec], max_top_n_keys_per_tag=2, min_score_for_shared_source=0.0
-    )
+    result = refine_claim_source_similarities([rec], max_top_n_keys_per_tag=2, min_score_for_shared_source=0.0)
     assert len(result[0].source_keys) <= 2

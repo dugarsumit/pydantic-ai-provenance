@@ -15,9 +15,7 @@ from pydantic_ai_provenance.store import ProvenanceStore
 
 
 def _make_node(node_type: NodeType, label: str) -> ProvenanceNode:
-    return ProvenanceNode.create(
-        type=node_type, label=label, agent_name="agent", run_id="r"
-    )
+    return ProvenanceNode.create(type=node_type, label=label, agent_name="agent", run_id="r")
 
 
 def _build_linear_store() -> tuple[ProvenanceStore, str, str]:

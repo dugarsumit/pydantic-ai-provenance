@@ -2,16 +2,12 @@
 
 from __future__ import annotations
 
-import pytest
-
 from pydantic_ai_provenance.graph import NodeType, ProvenanceNode
 from pydantic_ai_provenance.store import ProvenanceStore
 
 
 def _make_node(node_type: NodeType, label: str = "node") -> ProvenanceNode:
-    return ProvenanceNode.create(
-        type=node_type, label=label, agent_name="agent", run_id="r"
-    )
+    return ProvenanceNode.create(type=node_type, label=label, agent_name="agent", run_id="r")
 
 
 # ---------------------------------------------------------------------------

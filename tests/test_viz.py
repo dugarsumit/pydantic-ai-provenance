@@ -4,17 +4,13 @@ from __future__ import annotations
 
 import json
 
-import pytest
-
 from pydantic_ai_provenance.graph import NodeType, ProvenanceNode
 from pydantic_ai_provenance.store import ProvenanceStore
 from pydantic_ai_provenance.viz import to_dot, to_json, to_json_str, to_mermaid
 
 
 def _make_node(node_type: NodeType, label: str) -> ProvenanceNode:
-    return ProvenanceNode.create(
-        type=node_type, label=label, agent_name="agent", run_id="r"
-    )
+    return ProvenanceNode.create(type=node_type, label=label, agent_name="agent", run_id="r")
 
 
 def _two_node_store() -> ProvenanceStore:

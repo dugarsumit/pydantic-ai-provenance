@@ -1,3 +1,11 @@
+"""Pydantic-AI capability that records a full provenance DAG for every agent run.
+
+Attach a :class:`ProvenanceCapability` to a ``pydantic_ai.Agent`` at construction
+time.  The capability hooks into every stage of the agent lifecycle — run start,
+model request/response, and tool execution — and builds an attributed directed
+acyclic graph that can be inspected after the run via the :attr:`store` property.
+"""
+
 from __future__ import annotations
 
 import uuid
@@ -9,13 +17,14 @@ from pydantic_ai.capabilities import AbstractCapability
 from pydantic_ai.messages import ModelResponse, ToolCallPart
 from pydantic_ai.tools import RunContext, ToolDefinition
 
-from .citations import (
+from pydantic_ai_provenance.citations import (
     extract_file_path,
     format_cited_content,
     parse_citations,
 )
-from .graph import NodeType, ProvenanceNode
-from .store import ProvenanceStore, _PROVENANCE_CTX
+from pydantic_ai_provenance.graph import NodeType, ProvenanceNode
+from pydantic_ai_provenance.store import _PROVENANCE_CTX, ProvenanceStore
+from pydantic_ai_provenance.verification import CitationVerificationReport, verify_citations
 
 _CITATION_INSTRUCTIONS = """
 FORMAT:
@@ -85,9 +94,7 @@ class ProvenanceCapability(AbstractCapability):
     _ctx_token: Token[Any] | None = field(default=None, init=False, repr=False)
     # Value of _PROVENANCE_CTX before before_run(); used if reset(token) fails
     # because on_run_error / after_run run in a different Context (asyncio).
-    _ctx_previous: tuple[ProvenanceStore, str | None] | None = field(
-        default=None, init=False, repr=False
-    )
+    _ctx_previous: tuple[ProvenanceStore, str | None] | None = field(default=None, init=False, repr=False)
 
     # Tracks the node that the next step should chain from.
     # After parallel tool calls this holds the model-response node so each
@@ -100,15 +107,92 @@ class ProvenanceCapability(AbstractCapability):
 
     @property
     def store(self) -> ProvenanceStore:
+        """The shared :class:`~.store.ProvenanceStore` for the current (or most recent) run.
+
+        Raises:
+            RuntimeError: If accessed before the agent run has started (i.e. before
+                :meth:`for_run` has been called).
+        """
         if self._store is None:
             raise RuntimeError("store is only available after the agent run starts")
         return self._store
+
+    async def verify(
+        self,
+        text: str,
+        *,
+        claim_context_chars: int = 720,
+        source_max_chars: int = 96_000,
+        source_chunk_chars: int = 1_200,
+        source_chunk_stride: int = 600,
+        source_max_chunks: int = 400,
+        min_score: float = 0.3,
+        max_keys_per_tag: int = 2,
+    ) -> CitationVerificationReport:
+        """Verify citation tags in *text* against this capability's shared store.
+
+        Delegates to :func:`~pydantic_ai_provenance.verification.verify_citations`.
+        The method is ``async`` so that Step 3 (LLM-based entailment scoring via
+        ``await agent.run()``) can be added as an opt-in parameter without a
+        breaking API change.
+
+        - **Step 1** strips any ``[REF|…]`` tags whose keys cannot be resolved in
+          the store.
+        - **Step 2** scores each remaining claim against its cited source via
+          TF-IDF cosine similarity and drops keys whose score falls below the
+          configured threshold.
+
+        In multi-agent setups every capability shares the same underlying
+        :class:`~pydantic_ai_provenance.store.ProvenanceStore`, so it does not
+        matter which agent's capability you call this on — the result is identical.
+        Use whichever capability reference is most convenient (typically the
+        top-level coordinator's).
+
+        Args:
+            text: The text containing inline ``[REF|…]`` citation tags to verify.
+            claim_context_chars: Maximum characters before each citation tag used
+                as the claim for similarity scoring.  Default: ``720``.
+            source_max_chars: Maximum source characters fed to the TF-IDF
+                vectoriser.  Default: ``96_000``.
+            source_chunk_chars: Width of each overlapping source window.  Default: ``1_200``.
+            source_chunk_stride: Step size between consecutive source windows.  Default: ``600``.
+            source_max_chunks: Maximum number of source windows per citation key.  Default: ``400``.
+            min_score: Cosine similarity threshold; keys below this are dropped.
+                Default: ``0.3``.
+            max_keys_per_tag: Maximum citation keys retained per tag after scoring.
+                Default: ``2``.
+
+        Returns:
+            A :class:`~pydantic_ai_provenance.verification.CitationVerificationReport`
+            with the sanitised text and per-claim similarity records.
+        """
+        return await verify_citations(
+            text,
+            self.store,
+            claim_context_chars=claim_context_chars,
+            source_max_chars=source_max_chars,
+            source_chunk_chars=source_chunk_chars,
+            source_chunk_stride=source_chunk_stride,
+            source_max_chunks=source_max_chunks,
+            min_score=min_score,
+            max_keys_per_tag=max_keys_per_tag,
+        )
 
     # ------------------------------------------------------------------
     # Static configuration (called once at agent construction)
     # ------------------------------------------------------------------
 
     def get_instructions(self) -> str | None:
+        """Return the citation-format system instructions to inject into the agent prompt.
+
+        When :attr:`inject_citation_instructions` is ``True`` and
+        :attr:`source_tools` is non-empty, the model receives formatting rules
+        that tell it how and when to emit ``[REF|<key>]`` inline tags.  Returning
+        ``None`` means no extra instructions are injected.
+
+        Returns:
+            The citation instruction string, or ``None`` if injection is disabled.
+        """
         if self.inject_citation_instructions:
             return _CITATION_INSTRUCTIONS
         return None
@@ -118,6 +202,27 @@ class ProvenanceCapability(AbstractCapability):
     # ------------------------------------------------------------------
 
     async def for_run(self, ctx: RunContext[Any]) -> ProvenanceCapability:
+        """Prepare a per-run capability instance, wiring it into the correct store.
+
+        Called by pydantic-ai before each run begins.  When a provenance context is
+        already active (i.e. this agent is a subagent spawned from a tool), the
+        existing store and the tool-call node ID that triggered the subagent are
+        inherited so subagent nodes are linked back into the parent graph.
+        Otherwise a fresh :class:`~.store.ProvenanceStore` is created.
+
+        The template instance (``self``) has its ``_store`` mirrored from the
+        per-run instance so that callers who hold a reference to the original
+        capability object can still access ``provenance.store`` after
+        ``await agent.run()`` returns.  This mirroring is not concurrency-safe
+        for overlapping runs on the same capability instance.
+
+        Args:
+            ctx: The pydantic-ai run context providing the ``run_id``.
+
+        Returns:
+            A freshly constructed :class:`ProvenanceCapability` with per-run state
+            initialised but lifecycle hooks not yet fired.
+        """
         ctx_value = _PROVENANCE_CTX.get()
 
         if ctx_value is None:
@@ -143,6 +248,16 @@ class ProvenanceCapability(AbstractCapability):
         return instance
 
     async def before_run(self, ctx: RunContext[Any]) -> None:
+        """Record run initialisation nodes and set the provenance context variable.
+
+        Creates an ``AGENT_RUN`` node (linked to the parent tool-call node if this
+        is a subagent), followed by an ``INPUT`` node carrying the user prompt.
+        The ``_PROVENANCE_CTX`` context variable is then updated so any tools or
+        nested agents spawned during the run inherit the same store.
+
+        Args:
+            ctx: The pydantic-ai run context providing the user prompt.
+        """
         store = self._store
         assert store is not None
 
@@ -178,6 +293,22 @@ class ProvenanceCapability(AbstractCapability):
         self._ctx_token = _PROVENANCE_CTX.set((store, None))
 
     async def after_run(self, ctx: RunContext[Any], *, result: Any) -> Any:
+        """Record the final output node, register its citation key, and restore context.
+
+        Creates a ``FINAL_OUTPUT`` node linked from either the pending tool-result
+        nodes (if any) or the last sequential node.  Registers the output in the
+        citation registry as an ``a_*`` key so parent agents can cite it.  Parses
+        any ``[REF|…]`` tags in the output text and adds ``cited_in`` edges.
+        Finally restores ``_PROVENANCE_CTX`` to its pre-run state.
+
+        Args:
+            ctx: The pydantic-ai run context (unused directly, required by protocol).
+            result: The agent run result; its ``output`` attribute (or its string
+                representation) is stored on the output node.
+
+        Returns:
+            The unmodified *result* object.
+        """
         store = self._store
         assert store is not None
 
@@ -209,10 +340,30 @@ class ProvenanceCapability(AbstractCapability):
         return result
 
     async def on_run_error(self, ctx: RunContext[Any], *, error: BaseException) -> Any:
+        """Restore the provenance context variable and re-raise the error.
+
+        Ensures ``_PROVENANCE_CTX`` is always cleaned up even when the run fails,
+        so subsequent runs are not accidentally associated with a stale context.
+
+        Args:
+            ctx: The pydantic-ai run context (unused directly).
+            error: The exception that caused the run to fail.
+
+        Raises:
+            BaseException: Always re-raises *error* unchanged.
+        """
         self._restore_provenance_ctx()
         raise error
 
     def _restore_provenance_ctx(self) -> None:
+        """Reset ``_PROVENANCE_CTX`` to its value from before :meth:`before_run`.
+
+        Prefers ``ContextVar.reset(token)`` for clean unwinding.  Falls back to
+        ``ContextVar.set(previous_value)`` when ``reset`` raises ``ValueError``,
+        which can occur when pydantic-ai delivers :meth:`on_run_error` from a
+        different ``asyncio`` task context than the one that called
+        :meth:`before_run`.  No-ops if there is no saved token.
+        """
         if self._ctx_token is None:
             return
         try:
@@ -228,9 +379,21 @@ class ProvenanceCapability(AbstractCapability):
     # Model hooks
     # ------------------------------------------------------------------
 
-    async def before_model_request(
-        self, ctx: RunContext[Any], request_context: Any
-    ) -> Any:
+    async def before_model_request(self, ctx: RunContext[Any], request_context: Any) -> Any:
+        """Record a ``MODEL_REQUEST`` node and wire it into the sequential chain.
+
+        Edges are drawn from all pending tool-result nodes (accumulated since the
+        last model response) if any exist, otherwise from the last sequential node.
+        The pending list is cleared after the edges are added.  The request node
+        becomes the new ``_last_sequential_node_id``.
+
+        Args:
+            ctx: The pydantic-ai run context, used to read the current step number.
+            request_context: The pydantic-ai request context object, returned unchanged.
+
+        Returns:
+            The unmodified *request_context*.
+        """
         store = self._store
         assert store is not None
 
@@ -257,6 +420,22 @@ class ProvenanceCapability(AbstractCapability):
     async def after_model_request(
         self, ctx: RunContext[Any], *, request_context: Any, response: ModelResponse
     ) -> ModelResponse:
+        """Record a ``MODEL_RESPONSE`` node and parse any inline citations.
+
+        Creates a ``MODEL_RESPONSE`` node linked from the preceding request node.
+        If the response contains a text part, :meth:`_link_citations` is called to
+        add ``cited_in`` edges for any ``[REF|…]`` tags found in it.  The pending
+        tool-result ID list is reset here because a new model turn is starting.
+
+        Args:
+            ctx: The pydantic-ai run context, used to read the current step number.
+            request_context: The pydantic-ai request context (unused here).
+            response: The :class:`~pydantic_ai.messages.ModelResponse` returned by
+                the LLM, stored with token usage, model name, and tool-call names.
+
+        Returns:
+            The unmodified *response*.
+        """
         store = self._store
         assert store is not None
 
@@ -269,8 +448,8 @@ class ProvenanceCapability(AbstractCapability):
             text=response if response.text else None,
             tool_calls=[tc.tool_name for tc in response.tool_calls],
             model_name=response.model_name,
-            input_tokens=response.usage.request_tokens,
-            output_tokens=response.usage.response_tokens,
+            input_tokens=response.usage.input_tokens,
+            output_tokens=response.usage.output_tokens,
         )
         store.add_node(response_node)
         if self._last_sequential_node_id:
@@ -297,6 +476,36 @@ class ProvenanceCapability(AbstractCapability):
         args: dict[str, Any],
         handler: Any,
     ) -> Any:
+        """Intercept a tool call to record its provenance and optionally wrap its result.
+
+        Creates a ``DATA_READ`` node (for tools in :attr:`source_tools`) or a
+        ``TOOL_CALL`` node, executes the underlying tool, then creates a
+        ``TOOL_RESULT`` node linked from the call node.
+
+        For source tools the raw result is wrapped with
+        :func:`~.citations.format_cited_content` so the model sees a
+        ``[REF|<key>]`` block header that it must use when citing facts from the
+        result.  For non-source tools, if the tool spawned a subagent (detected by
+        looking for an ``AGENT_RUN`` successor), the subagent's output is similarly
+        wrapped with its registered ``a_*`` key.
+
+        The ``_PROVENANCE_CTX`` context variable is temporarily set to
+        ``(store, call_node.id)`` while the tool runs so any nested agent picks up
+        the correct parent link.
+
+        Args:
+            ctx: The pydantic-ai run context (unused directly).
+            call: The :class:`~pydantic_ai.messages.ToolCallPart` describing the
+                tool invocation including its name and call ID.
+            tool_def: The :class:`~pydantic_ai.tools.ToolDefinition` for the tool
+                being called (unused directly).
+            args: Validated keyword arguments that will be forwarded to *handler*.
+            handler: Async callable that executes the actual tool logic.
+
+        Returns:
+            The (possibly wrapped) tool result string that will be fed back to the
+            model.
+        """
         store = self._store
         assert store is not None
 
@@ -346,9 +555,7 @@ class ProvenanceCapability(AbstractCapability):
         else:
             subagent_run = self._find_subagent_run(call_node.id, store)
             if subagent_run is not None:
-                subagent_key = self._find_citation_key_for_agent(
-                    subagent_run.agent_name, subagent_run.run_id, store
-                )
+                subagent_key = self._find_citation_key_for_agent(subagent_run.agent_name, subagent_run.run_id, store)
                 if subagent_key is not None:
                     returned_result = format_cited_content(result, subagent_key)
 
@@ -373,9 +580,7 @@ class ProvenanceCapability(AbstractCapability):
     # ------------------------------------------------------------------
 
     @staticmethod
-    def _find_subagent_run(
-        tool_call_node_id: str, store: ProvenanceStore
-    ) -> ProvenanceNode | None:
+    def _find_subagent_run(tool_call_node_id: str, store: ProvenanceStore) -> ProvenanceNode | None:
         """Return the AGENT_RUN node spawned by this tool call, if any."""
         for node in store.graph.successors(tool_call_node_id):
             if node.type == NodeType.AGENT_RUN:
@@ -383,9 +588,7 @@ class ProvenanceCapability(AbstractCapability):
         return None
 
     @staticmethod
-    def _find_citation_key_for_agent(
-        agent_name: str, run_id: str, store: ProvenanceStore
-    ) -> str | None:
+    def _find_citation_key_for_agent(agent_name: str, run_id: str, store: ProvenanceStore) -> str | None:
         """Find the citation key assigned to a specific agent run's FINAL_OUTPUT."""
         for key, node_id in store._citation_registry.items():
             node = store.graph.nodes.get(node_id)
@@ -398,9 +601,7 @@ class ProvenanceCapability(AbstractCapability):
                 return key
         return None
 
-    def _link_citations(
-        self, text: str, target_node_id: str, store: ProvenanceStore
-    ) -> None:
+    def _link_citations(self, text: str, target_node_id: str, store: ProvenanceStore) -> None:
         """Parse [REF|<key>] markers and add cited_in edges.
 
         Resolves each key through the shared citation registry to a node_id,

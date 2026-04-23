@@ -2,13 +2,30 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Debug example.py",
+      "name": "verify_citations.py (offline, no LLM)",
       "type": "debugpy",
       "request": "launch",
-      "program": "${workspaceFolder}/example.py",
-      "cwd": "${workspaceFolder}",
+      "program": "${workspaceFolder}/examples/verify_citations.py",
+      "cwd": "${workspaceFolder}/examples",
       "console": "integratedTerminal",
-      "justMyCode": true,
+      "envFile": "${workspaceFolder}/.env"
+    },
+    {
+      "name": "single_agent.py",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/examples/single_agent.py",
+      "cwd": "${workspaceFolder}/examples",
+      "console": "integratedTerminal",
+      "envFile": "${workspaceFolder}/.env"
+    },
+    {
+      "name": "multi_agent.py",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/examples/multi_agent.py",
+      "cwd": "${workspaceFolder}/examples",
+      "console": "integratedTerminal",
       "envFile": "${workspaceFolder}/.env"
     }
   ]

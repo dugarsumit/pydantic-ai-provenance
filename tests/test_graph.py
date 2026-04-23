@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-
-import pytest
+from datetime import UTC, datetime
 
 from pydantic_ai_provenance.graph import (
     NodeType,
@@ -12,7 +10,6 @@ from pydantic_ai_provenance.graph import (
     ProvenanceGraph,
     ProvenanceNode,
 )
-
 
 # ---------------------------------------------------------------------------
 # NodeType
@@ -36,19 +33,15 @@ def test_node_type_values():
 
 
 def test_provenance_node_create_sets_uuid():
-    node = ProvenanceNode.create(
-        type=NodeType.INPUT, label="test", agent_name="a", run_id="r"
-    )
+    node = ProvenanceNode.create(type=NodeType.INPUT, label="test", agent_name="a", run_id="r")
     assert len(node.id) > 0
     assert "-" in node.id
 
 
 def test_provenance_node_create_sets_timestamp():
-    before = datetime.now(timezone.utc)
-    node = ProvenanceNode.create(
-        type=NodeType.INPUT, label="test", agent_name="a", run_id="r"
-    )
-    after = datetime.now(timezone.utc)
+    before = datetime.now(UTC)
+    node = ProvenanceNode.create(type=NodeType.INPUT, label="test", agent_name="a", run_id="r")
+    after = datetime.now(UTC)
     assert before <= node.timestamp <= after
 
 
@@ -97,9 +90,7 @@ def test_provenance_edge_with_label():
 
 
 def _make_node(label: str, node_type: NodeType = NodeType.INPUT) -> ProvenanceNode:
-    return ProvenanceNode.create(
-        type=node_type, label=label, agent_name="agent", run_id="r"
-    )
+    return ProvenanceNode.create(type=node_type, label=label, agent_name="agent", run_id="r")
 
 
 def test_graph_add_and_retrieve_node():
