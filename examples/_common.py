@@ -25,7 +25,7 @@ from pydantic_ai.messages import (
 from pydantic_ai.run import AgentRunResult
 
 from pydantic_ai_provenance.store import ProvenanceStore
-from pydantic_ai_provenance.verification import strip_unresolvable_citation_keys, verify_citations_sync
+from pydantic_ai_provenance.verification import strip_unresolvable_citation_keys, verify_citations
 
 # ---------------------------------------------------------------------------
 # Model selection
@@ -183,7 +183,7 @@ def print_model_io(result: AgentRunResult[Any], *, heading: str) -> None:
             _heading(
                 [
                     f"  [{i}]  MODEL RESPONSE  <-  LLM",
-                    f"      model={msg.model_name!r}   tokens  in={u.request_tokens}  out={u.response_tokens}",
+                    f"      model={msg.model_name!r}   tokens  in={u.input_tokens}  out={u.output_tokens}",
                 ]
             )
             for j, part in enumerate(msg.parts, 1):
@@ -215,9 +215,9 @@ def print_model_io(result: AgentRunResult[Any], *, heading: str) -> None:
 # ---------------------------------------------------------------------------
 
 
-def print_citation_verification(store: ProvenanceStore, *, label: str, text: str) -> None:
+async def print_citation_verification(store: ProvenanceStore, *, label: str, text: str) -> None:
     """Print Step 1 (key sanitisation) and Step 2 (TF-IDF similarity) for *text*."""
-    rep = verify_citations_sync(text, store)
+    rep = await verify_citations(text, store)
     print("\n" + "-" * 60)
     print(f"Citation verification — {label}")
     print("-" * 60)

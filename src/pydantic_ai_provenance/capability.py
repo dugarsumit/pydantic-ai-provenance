@@ -18,8 +18,8 @@ from pydantic_ai.messages import ModelResponse, ToolCallPart
 from pydantic_ai.tools import RunContext, ToolDefinition
 
 from pydantic_ai_provenance.citations import (
-    extract_file_path,
-    format_cited_content,
+    _extract_file_path,
+    _format_cited_content,
     parse_citations,
 )
 from pydantic_ai_provenance.graph import NodeType, ProvenanceNode
@@ -483,7 +483,7 @@ class ProvenanceCapability(AbstractCapability):
         ``TOOL_RESULT`` node linked from the call node.
 
         For source tools the raw result is wrapped with
-        :func:`~.citations.format_cited_content` so the model sees a
+        :func:`~.citations._format_cited_content` so the model sees a
         ``[REF|<key>]`` block header that it must use when citing facts from the
         result.  For non-source tools, if the tool spawned a subagent (detected by
         looking for an ``AGENT_RUN`` successor), the subagent's output is similarly
@@ -512,7 +512,7 @@ class ProvenanceCapability(AbstractCapability):
         is_source = call.tool_name in self.source_tools
         node_type = NodeType.DATA_READ if is_source else NodeType.TOOL_CALL
         label_prefix = "[source] " if is_source else ""
-        file_path: str | None = extract_file_path(args) if is_source else None
+        file_path: str | None = _extract_file_path(args) if is_source else None
 
         call_node = ProvenanceNode.create(
             type=node_type,
@@ -551,13 +551,13 @@ class ProvenanceCapability(AbstractCapability):
         # Any other tool → result unchanged
         returned_result = result
         if is_source and citation_key:
-            returned_result = format_cited_content(result, citation_key)
+            returned_result = _format_cited_content(result, citation_key)
         else:
             subagent_run = self._find_subagent_run(call_node.id, store)
             if subagent_run is not None:
                 subagent_key = self._find_citation_key_for_agent(subagent_run.agent_name, subagent_run.run_id, store)
                 if subagent_key is not None:
-                    returned_result = format_cited_content(result, subagent_key)
+                    returned_result = _format_cited_content(result, subagent_key)
 
         result_node = ProvenanceNode.create(
             type=NodeType.TOOL_RESULT,

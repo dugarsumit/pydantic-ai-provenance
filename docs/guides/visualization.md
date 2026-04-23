@@ -6,12 +6,10 @@ The provenance graph can be exported in three formats: Mermaid, GraphViz DOT, an
 
 ## Mermaid
 
-`to_mermaid(store)` returns a [Mermaid](https://mermaid.js.org/) flowchart string.
+`store.to_mermaid()` returns a [Mermaid](https://mermaid.js.org/) flowchart string.
 
 ```python
-from pydantic_ai_provenance import to_mermaid
-
-print(to_mermaid(store))
+print(store.to_mermaid())
 ```
 
 Paste the output into [mermaid.live](https://mermaid.live) or embed it in a GitHub Markdown file:
@@ -40,12 +38,10 @@ flowchart LR
 
 ## GraphViz DOT
 
-`to_dot(store)` returns a [GraphViz](https://graphviz.org/) DOT string.
+`store.to_dot()` returns a [GraphViz](https://graphviz.org/) DOT string.
 
 ```python
-from pydantic_ai_provenance import to_dot
-
-dot_src = to_dot(store, graph_name="my_run")
+dot_src = store.to_dot(graph_name="my_run")
 print(dot_src)
 ```
 
@@ -67,18 +63,15 @@ g.render("provenance", format="svg", view=True)
 
 ## JSON
 
-`to_json(store)` returns a plain Python `dict`; `to_json_str(store)` serialises it to a JSON string.
+`store.to_json()` returns a plain Python `dict`; `store.to_json_str()` serialises it to a JSON string.
 
 ```python
-from pydantic_ai_provenance import to_json, to_json_str
-import json
-
-data = to_json(store)
+data = store.to_json()
 print(data["nodes"])   # list of node dicts
 print(data["edges"])   # list of edge dicts
 
 # Pretty-print
-print(to_json_str(store, indent=2))
+print(store.to_json_str(indent=2))
 ```
 
 ### Schema

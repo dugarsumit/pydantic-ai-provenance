@@ -1,6 +1,6 @@
 # Citation Verification
 
-`verify_citations_sync` runs a two-step pipeline that checks every `[REF|…]` tag in the model's output against the provenance store. An optional third step adds LLM-based semantic entailment.
+`verify_citations` (or `provenance.verify()`) runs a two-step pipeline that checks every `[REF|…]` tag in the model's output against the provenance store. An optional third step adds LLM-based semantic entailment.
 
 ---
 
@@ -27,19 +27,19 @@ for r in records:
 
 **How claim context is extracted:**
 
-- Takes up to 720 characters of text immediately before the tag.
+- Takes up to 720 characters of text immediately before the tag (controlled by `claim_context_chars`).
 - Uses the last blank-line paragraph of that window.
-- Applies simple `.!?` sentence splitting and keeps the last sentence (configurable via `max_sentences`).
+- Applies simple `.!?` sentence splitting and keeps the last sentence.
 - Stops at any previous `[REF|…]` tag to avoid mixing claims.
 
 **How source similarity is computed:**
 
 - Source text is normalised (lowercased, whitespace-collapsed).
-- Split into overlapping 1 200-character windows (600-character stride) for long documents.
+- Split into overlapping windows (`source_chunk_chars=1200`, `source_chunk_stride=600`) for long documents.
 - TF-IDF vectors are built over all windows, and the maximum cosine similarity is returned.
 
 ```python
-from pydantic_ai_provenance import compare_claim_to_sources_tfidf
+from pydantic_ai_provenance.verification import compare_claim_to_sources_tfidf
 
 similarities = compare_claim_to_sources_tfidf(sanitized_text, store)
 for sim in similarities:
@@ -54,7 +54,7 @@ for sim in similarities:
 - **Min-score filter** (`min_score_for_shared_source=0.3`): drop keys below the threshold.
 
 ```python
-from pydantic_ai_provenance import refine_claim_source_similarities
+from pydantic_ai_provenance.verification import refine_claim_source_similarities
 
 refined = refine_claim_source_similarities(similarities, min_score_for_shared_source=0.3)
 ```
@@ -63,16 +63,22 @@ refined = refine_claim_source_similarities(similarities, min_score_for_shared_so
 
 ## Combined (Steps 1 + 2)
 
-`verify_citations_sync` runs both steps and returns a `CitationVerificationReport`:
+The simplest way to run both steps is via the capability's `verify()` method:
 
 ```python
-from pydantic_ai_provenance import verify_citations_sync
-
-report = verify_citations_sync(result.output, store)
+report = await provenance.verify(result.output)
 
 print(report.original_text)
 print(report.text_with_verified_citations)  # tags adjusted/removed after verification
 print(report.claim_source_similarities)     # per-tag TF-IDF scores
+```
+
+Or call `verify_citations` directly with a store:
+
+```python
+from pydantic_ai_provenance.verification import verify_citations
+
+report = await verify_citations(result.output, store)
 ```
 
 ---

@@ -33,12 +33,8 @@ uv add pydantic-ai-provenance
 ```python
 import asyncio
 from pydantic_ai import Agent
-from pydantic_ai_provenance import (
-    ProvenanceCapability,
-    attribute_output,
-    to_mermaid,
-    verify_citations_sync,
-)
+from pydantic_ai_provenance.capability import ProvenanceCapability
+from pydantic_ai_provenance.attribution import attribute_output
 
 provenance = ProvenanceCapability(
     agent_name="summariser",
@@ -64,10 +60,10 @@ async def main():
     print(attribute_output(store).summary())
 
     # Mermaid diagram
-    print(to_mermaid(store))
+    print(store.to_mermaid())
 
     # Citation verification (Steps 1 + 2, no extra API calls)
-    report = verify_citations_sync(result.output, store)
+    report = await provenance.verify(result.output)
     print(report.text_with_verified_citations)
 
 asyncio.run(main())
@@ -115,7 +111,7 @@ async def main():
     result = await coord_agent.run("Summarise pydantic-ai.")
     # Both agents share the same store automatically via contextvars
     store = coord_cap.store
-    print(to_mermaid(store))
+    print(store.to_mermaid())
 ```
 
 ---
@@ -160,7 +156,7 @@ async def main():
 
 | Symbol | Description |
 |---|---|
-| `verify_citations_sync(text, store)` | Steps 1 (key sanitisation) + 2 (TF-IDF overlap) |
+| `await verify_citations(text, store)` | Steps 1 (key sanitisation) + 2 (TF-IDF overlap) |
 | `strip_unresolvable_citation_keys(text, store)` | Step 1 only: remove keys not in the store |
 | `claim_source_tfidf_cosine(claim, source)` | Max cosine similarity over sliding source windows |
 | `entailment_agent(model)` | Build a pydantic-ai Step 3 entailment judge |
@@ -171,24 +167,26 @@ async def main():
 
 | Symbol | Description |
 |---|---|
-| `to_mermaid(store)` | Mermaid flowchart string |
-| `to_dot(store)` | GraphViz DOT string |
-| `to_json(store)` | `dict` with `nodes` and `edges` lists |
-| `to_json_str(store, indent=2)` | JSON string |
+| `store.to_mermaid()` | Mermaid flowchart string |
+| `store.to_dot(graph_name="provenance")` | GraphViz DOT string |
+| `store.to_json()` | `dict` with `nodes` and `edges` lists |
+| `store.to_json_str(indent=2)` | JSON string |
 
 ---
 
 ## Running the examples
 
 ```bash
-# Offline verification only (no API keys required)
-uv run python example.py --verify-only
+# Offline citation verification (no API keys required)
+uv run python examples/verify_citations.py
 
-# Full example with Azure OpenAI
-AZURE_OPENAI_ENDPOINT=https://... AZURE_OPENAI_API_KEY=... uv run python example.py
+# Single-agent example
+ANTHROPIC_API_KEY=... uv run python examples/single_agent.py
+# or Azure OpenAI:
+AZURE_OPENAI_ENDPOINT=https://... AZURE_OPENAI_API_KEY=... uv run python examples/single_agent.py
 
-# Full example with Anthropic
-ANTHROPIC_API_KEY=... uv run python example.py
+# Multi-agent example
+ANTHROPIC_API_KEY=... uv run python examples/multi_agent.py
 ```
 
 ---

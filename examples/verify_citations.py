@@ -2,13 +2,14 @@
 Offline citation-verification demo — no LLM credentials required.
 
 Exercises ``strip_unresolvable_citation_keys`` (Step 1) and
-``verify_citations_sync`` (Step 2) on a synthetic provenance graph:
+``verify_citations`` (Step 2) on a synthetic provenance graph:
 
     uv run python examples/verify_citations.py
 """
 
 from __future__ import annotations
 
+import asyncio
 from pathlib import Path
 
 from _common import _heading, print_citation_verification
@@ -38,7 +39,7 @@ def _build_store(source_body: str, *, file_path: str = "demo.txt") -> tuple[Prov
     return store, citation_key
 
 
-def main() -> None:
+async def main() -> None:
     print("=" * 60)
     print("Citation verification — offline smoke test")
     print("=" * 60)
@@ -47,21 +48,21 @@ def main() -> None:
     store, dkey = _build_store(source)
 
     _heading(["Case A — claim aligns with source (expect non-empty [REF|…] after refine)"])
-    print_citation_verification(
+    await print_citation_verification(
         store,
         label="aligned claim",
         text=f"The passage mentions a quick brown fox. [REF|{dkey}]",
     )
 
     _heading(["Case B — mixed valid + bogus keys (Step 1 strips bogus)"])
-    print_citation_verification(
+    await print_citation_verification(
         store,
         label="sanitize + verify",
         text=f"A fox appears in the story. [REF|{dkey}|not_a_real_key]",
     )
 
     _heading(["Case C — claim unrelated to source (expect weak TF-IDF; tag may be dropped)"])
-    print_citation_verification(
+    await print_citation_verification(
         store,
         label="misaligned claim",
         text=f"Quantum entanglement enables superluminal routers. [REF|{dkey}]",
@@ -70,4 +71,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     load_dotenv(Path(__file__).resolve().parent.parent / ".env")
-    main()
+    asyncio.run(main())

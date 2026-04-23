@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from pydantic_ai_provenance.citations import (
     CitationRef,
+    _extract_file_path,
+    _format_cited_content,
+    _is_agent_key,
+    _is_data_key,
     citation_tag_spans,
-    extract_file_path,
-    format_cited_content,
-    is_agent_key,
-    is_data_key,
     parse_citations,
     strip_inline_citation_tags,
     strip_inline_citation_tags_preserve_leading_ref_header,
@@ -35,19 +35,19 @@ def test_citation_ref_str_multi():
 
 
 def test_is_data_key_true():
-    assert is_data_key("d_1") is True
+    assert _is_data_key("d_1") is True
 
 
 def test_is_data_key_false():
-    assert is_data_key("a_1") is False
+    assert _is_data_key("a_1") is False
 
 
 def test_is_agent_key_true():
-    assert is_agent_key("a_3") is True
+    assert _is_agent_key("a_3") is True
 
 
 def test_is_agent_key_false():
-    assert is_agent_key("d_3") is False
+    assert _is_agent_key("d_3") is False
 
 
 # ---------------------------------------------------------------------------
@@ -185,31 +185,31 @@ def test_citation_tag_spans_multi_key():
 
 
 def test_extract_file_path_priority_path():
-    assert extract_file_path({"path": "/a.txt", "file": "/b.txt"}) == "/a.txt"
+    assert _extract_file_path({"path": "/a.txt", "file": "/b.txt"}) == "/a.txt"
 
 
 def test_extract_file_path_priority_file():
-    assert extract_file_path({"file": "/b.txt", "url": "http://x"}) == "/b.txt"
+    assert _extract_file_path({"file": "/b.txt", "url": "http://x"}) == "/b.txt"
 
 
 def test_extract_file_path_priority_filename():
-    assert extract_file_path({"filename": "report.csv"}) == "report.csv"
+    assert _extract_file_path({"filename": "report.csv"}) == "report.csv"
 
 
 def test_extract_file_path_priority_url():
-    assert extract_file_path({"url": "http://example.com"}) == "http://example.com"
+    assert _extract_file_path({"url": "http://example.com"}) == "http://example.com"
 
 
 def test_extract_file_path_fallback_first_string():
-    assert extract_file_path({"query": "something"}) == "something"
+    assert _extract_file_path({"query": "something"}) == "something"
 
 
 def test_extract_file_path_empty_dict():
-    assert extract_file_path({}) is None
+    assert _extract_file_path({}) is None
 
 
 def test_extract_file_path_no_string_values():
-    assert extract_file_path({"count": 42, "flag": True}) is None
+    assert _extract_file_path({"count": 42, "flag": True}) is None
 
 
 # ---------------------------------------------------------------------------
@@ -218,15 +218,15 @@ def test_extract_file_path_no_string_values():
 
 
 def test_format_cited_content_simple():
-    result = format_cited_content("hello world", "d_1")
+    result = _format_cited_content("hello world", "d_1")
     assert result == "[REF|d_1]\nhello world"
 
 
 def test_format_cited_content_converts_to_str():
-    result = format_cited_content(42, "a_3")
+    result = _format_cited_content(42, "a_3")
     assert result == "[REF|a_3]\n42"
 
 
 def test_format_cited_content_preserves_newlines_in_body():
-    result = format_cited_content("line1\nline2", "d_2")
+    result = _format_cited_content("line1\nline2", "d_2")
     assert result == "[REF|d_2]\nline1\nline2"

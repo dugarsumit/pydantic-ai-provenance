@@ -1,6 +1,6 @@
 # API Reference
 
-All public symbols are importable directly from `pydantic_ai_provenance`.
+Public symbols live in their respective submodules. Import directly from the submodule (e.g. `from pydantic_ai_provenance.capability import ProvenanceCapability`).
 
 ---
 
@@ -32,6 +32,25 @@ pydantic-ai `AbstractCapability` that hooks into agent lifecycle events to build
 |---|---|---|
 | `store` | `ProvenanceStore` | Available after the run starts. Raises `RuntimeError` if accessed before. |
 
+**Methods**
+
+```python
+async def verify(
+    self,
+    text: str,
+    *,
+    claim_context_chars: int = 720,
+    source_max_chars: int = 96_000,
+    source_chunk_chars: int = 1_200,
+    source_chunk_stride: int = 600,
+    source_max_chunks: int = 400,
+    min_score: float = 0.3,
+    max_keys_per_tag: int = 2,
+) -> CitationVerificationReport
+```
+
+Convenience wrapper around `verify_citations` using this capability's shared store. Safe to call on any capability in a multi-agent setup — all capabilities share the same underlying store.
+
 ---
 
 ### `ProvenanceStore`
@@ -61,7 +80,7 @@ store.citation_summary() -> dict[str, dict]
 ### `NodeType`
 
 ```python
-class NodeType(str, Enum):
+class NodeType(StrEnum):
     INPUT          = "input"
     DATA_READ      = "data_read"
     TOOL_CALL      = "tool_call"
@@ -212,18 +231,24 @@ class CitationRef:
 
 ## Verification
 
-### `verify_citations_sync`
+### `verify_citations`
 
 ```python
-def verify_citations_sync(
+async def verify_citations(
     text: str,
     store: ProvenanceStore,
     *,
-    context_max_chars: int = 720,
+    claim_context_chars: int = 720,
+    source_max_chars: int = 96_000,
+    source_chunk_chars: int = 1_200,
+    source_chunk_stride: int = 600,
+    source_max_chunks: int = 400,
+    min_score: float = 0.3,
+    max_keys_per_tag: int = 2,
 ) -> CitationVerificationReport
 ```
 
-Steps 1 (key sanitisation) + 2 (TF-IDF overlap). Returns a `CitationVerificationReport`.
+Steps 1 (key sanitisation) + 2 (TF-IDF overlap). Returns a `CitationVerificationReport`. In most cases prefer calling `await provenance.verify(text)` on the capability instead.
 
 ### `strip_unresolvable_citation_keys`
 
@@ -301,9 +326,11 @@ class CitationVerificationReport:
 
 ## Visualization
 
-| Function | Description |
+Available as methods on `ProvenanceStore`.
+
+| Method | Description |
 |---|---|
-| `to_mermaid(store)` | Mermaid flowchart string |
-| `to_dot(store, graph_name="provenance")` | GraphViz DOT string |
-| `to_json(store)` | `dict` with `nodes` and `edges` |
-| `to_json_str(store, indent=2)` | JSON string |
+| `store.to_mermaid()` | Mermaid flowchart string |
+| `store.to_dot(graph_name="provenance")` | GraphViz DOT string |
+| `store.to_json()` | `dict` with `nodes` and `edges` |
+| `store.to_json_str(indent=2)` | JSON string |

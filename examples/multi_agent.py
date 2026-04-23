@@ -85,12 +85,12 @@ async def main() -> None:
 
     print(f"\nOutput: {result.output}\n")
     out = str(result.output)
-    print_citation_verification(store, label="coordinator final output", text=out)
+    await print_citation_verification(store, label="coordinator final output", text=out)
 
     d_keys = [k for k in store.citation_summary() if k.startswith("d_")]
     if d_keys:
         demo = f"Pydantic AI is a framework. [REF|{d_keys[0]}] See [REF|bad_u]."
-        print_citation_verification(store, label="synthetic (valid + bogus keys)", text=demo)
+        await print_citation_verification(store, label="synthetic (valid + bogus keys)", text=demo)
 
 
 if __name__ == "__main__":

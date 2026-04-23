@@ -1,4 +1,4 @@
-"""Tests for pydantic_ai_provenance.viz."""
+"""Tests for ProvenanceStore visualisation methods."""
 
 from __future__ import annotations
 
@@ -6,7 +6,6 @@ import json
 
 from pydantic_ai_provenance.graph import NodeType, ProvenanceNode
 from pydantic_ai_provenance.store import ProvenanceStore
-from pydantic_ai_provenance.viz import to_dot, to_json, to_json_str, to_mermaid
 
 
 def _make_node(node_type: NodeType, label: str) -> ProvenanceNode:
@@ -30,32 +29,32 @@ def _two_node_store() -> ProvenanceStore:
 
 def test_to_mermaid_starts_with_flowchart():
     store = _two_node_store()
-    result = to_mermaid(store)
+    result = store.to_mermaid()
     assert result.startswith("flowchart LR")
 
 
 def test_to_mermaid_contains_node_labels():
     store = _two_node_store()
-    result = to_mermaid(store)
+    result = store.to_mermaid()
     assert "read_file" in result
     assert "Final answer" in result
 
 
 def test_to_mermaid_contains_arrow():
     store = _two_node_store()
-    result = to_mermaid(store)
+    result = store.to_mermaid()
     assert "-->" in result
 
 
 def test_to_mermaid_contains_classDef():
     store = _two_node_store()
-    result = to_mermaid(store)
+    result = store.to_mermaid()
     assert "classDef" in result
 
 
 def test_to_mermaid_empty_store():
     store = ProvenanceStore()
-    result = to_mermaid(store)
+    result = store.to_mermaid()
     assert result.startswith("flowchart LR")
 
 
@@ -66,32 +65,32 @@ def test_to_mermaid_empty_store():
 
 def test_to_dot_starts_with_digraph():
     store = _two_node_store()
-    result = to_dot(store)
+    result = store.to_dot()
     assert result.startswith("digraph provenance")
 
 
 def test_to_dot_contains_node_labels():
     store = _two_node_store()
-    result = to_dot(store)
+    result = store.to_dot()
     assert "read_file" in result
     assert "Final answer" in result
 
 
 def test_to_dot_contains_arrow():
     store = _two_node_store()
-    result = to_dot(store)
+    result = store.to_dot()
     assert "->" in result
 
 
 def test_to_dot_custom_graph_name():
     store = _two_node_store()
-    result = to_dot(store, graph_name="my_graph")
+    result = store.to_dot(graph_name="my_graph")
     assert "digraph my_graph" in result
 
 
 def test_to_dot_ends_with_closing_brace():
     store = _two_node_store()
-    result = to_dot(store)
+    result = store.to_dot()
     assert result.strip().endswith("}")
 
 
@@ -102,20 +101,20 @@ def test_to_dot_ends_with_closing_brace():
 
 def test_to_json_returns_dict():
     store = _two_node_store()
-    result = to_json(store)
+    result = store.to_json()
     assert isinstance(result, dict)
 
 
 def test_to_json_has_nodes_and_edges_keys():
     store = _two_node_store()
-    result = to_json(store)
+    result = store.to_json()
     assert "nodes" in result
     assert "edges" in result
 
 
 def test_to_json_nodes_have_required_fields():
     store = _two_node_store()
-    result = to_json(store)
+    result = store.to_json()
     for node in result["nodes"]:
         assert "id" in node
         assert "type" in node
@@ -127,7 +126,7 @@ def test_to_json_nodes_have_required_fields():
 
 def test_to_json_edges_have_required_fields():
     store = _two_node_store()
-    result = to_json(store)
+    result = store.to_json()
     for edge in result["edges"]:
         assert "source" in edge
         assert "target" in edge
@@ -136,13 +135,13 @@ def test_to_json_edges_have_required_fields():
 
 def test_to_json_node_count():
     store = _two_node_store()
-    result = to_json(store)
+    result = store.to_json()
     assert len(result["nodes"]) == 2
 
 
 def test_to_json_edge_count():
     store = _two_node_store()
-    result = to_json(store)
+    result = store.to_json()
     assert len(result["edges"]) == 1
 
 
@@ -153,7 +152,7 @@ def test_to_json_edge_count():
 
 def test_to_json_str_returns_valid_json():
     store = _two_node_store()
-    result = to_json_str(store)
+    result = store.to_json_str()
     parsed = json.loads(result)
     assert "nodes" in parsed
     assert "edges" in parsed
@@ -161,7 +160,7 @@ def test_to_json_str_returns_valid_json():
 
 def test_to_json_str_respects_indent():
     store = _two_node_store()
-    result_2 = to_json_str(store, indent=2)
-    result_4 = to_json_str(store, indent=4)
+    result_2 = store.to_json_str(indent=2)
+    result_4 = store.to_json_str(indent=4)
     assert "    " in result_4
     assert result_2 != result_4

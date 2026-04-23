@@ -98,22 +98,18 @@ print(store.citation_summary())
 ## Verifying citations
 
 ```python
-from pydantic_ai_provenance import verify_citations_sync
-
-report = verify_citations_sync(result.output, store)
+report = await provenance.verify(result.output)
 print(report.text_with_verified_citations)
 ```
 
-See [Citation Verification](guides/verification.md) for the full three-step pipeline.
+`verify()` runs Step 1 (key sanitisation) and Step 2 (TF-IDF overlap scoring) and returns a `CitationVerificationReport`. See [Citation Verification](guides/verification.md) for the full three-step pipeline.
 
 ---
 
 ## Visualising the graph
 
 ```python
-from pydantic_ai_provenance import to_mermaid
-
-print(to_mermaid(store))
+print(store.to_mermaid())
 ```
 
 Paste the output into [mermaid.live](https://mermaid.live) to see the full execution DAG.
@@ -122,17 +118,15 @@ See [Visualization](guides/visualization.md) for Mermaid, GraphViz DOT, and JSON
 
 ---
 
-## Running the bundled example
-
-The `examples/example.py` file demonstrates both single-agent and multi-agent usage.
+## Running the bundled examples
 
 ```bash
-# No API keys required — offline citation verification only
-uv run python examples/example.py --verify-only
+# Offline citation verification (no API keys required)
+uv run python examples/verify_citations.py
 
-# Azure OpenAI
-AZURE_OPENAI_ENDPOINT=https://... AZURE_OPENAI_API_KEY=... uv run python examples/example.py
+# Single-agent example
+ANTHROPIC_API_KEY=... uv run python examples/single_agent.py
 
-# Anthropic
-ANTHROPIC_API_KEY=... uv run python examples/example.py
+# Multi-agent example
+ANTHROPIC_API_KEY=... uv run python examples/multi_agent.py
 ```

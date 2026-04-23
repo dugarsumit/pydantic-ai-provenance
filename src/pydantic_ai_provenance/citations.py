@@ -20,18 +20,16 @@ _FILE_ARG_PRIORITY = ("path", "file", "filename", "filepath", "url", "uri", "sou
 
 # Citation key prefixes — baked into store-generated keys so the graph is
 # human-readable without needing to look up the registry.
-KEY_PREFIX_DATA = "d"
-KEY_PREFIX_AGENT = "a"
+_KEY_PREFIX_DATA = "d"
+_KEY_PREFIX_AGENT = "a"
 
 
-def is_data_key(key: str) -> bool:
-    """Return ``True`` if *key* is a data-source key (``d_*``)."""
-    return key.startswith(KEY_PREFIX_DATA + "_")
+def _is_data_key(key: str) -> bool:
+    return key.startswith(_KEY_PREFIX_DATA + "_")
 
 
-def is_agent_key(key: str) -> bool:
-    """Return ``True`` if *key* is an agent-output key (``a_*``)."""
-    return key.startswith(KEY_PREFIX_AGENT + "_")
+def _is_agent_key(key: str) -> bool:
+    return key.startswith(_KEY_PREFIX_AGENT + "_")
 
 
 @dataclass
@@ -74,7 +72,7 @@ def strip_inline_citation_tags_preserve_leading_ref_header(text: str) -> str:
     """Remove inline ``[REF|…]`` tags but keep one optional opening block-header line.
 
     If the first line of *text* is exactly a single ``[REF|key|…]`` tag (the
-    wrapped tool/subagent block header written by :func:`format_cited_content`),
+    wrapped tool/subagent block header written by :func:`_format_cited_content`),
     that line is kept and only the following body is stripped.
 
     Otherwise identical to :func:`strip_inline_citation_tags`.
@@ -104,7 +102,7 @@ def citation_tag_spans(text: str) -> list[tuple[int, int, CitationRef]]:
     ]
 
 
-def extract_file_path(args: dict[str, object]) -> str | None:
+def _extract_file_path(args: dict[str, object]) -> str | None:
     """Find a file-path argument from a source tool's validated args dict.
 
     Tries the keys in :data:`_FILE_ARG_PRIORITY` order, then falls back to the
@@ -119,7 +117,7 @@ def extract_file_path(args: dict[str, object]) -> str | None:
     return None
 
 
-def format_cited_content(result: object, citation_key: str) -> str:
+def _format_cited_content(result: object, citation_key: str) -> str:
     """Wrap tool or subagent output in a ``[REF|<key>]`` block header.
 
     The returned string always starts with ``[REF|<citation_key>]`` on its own

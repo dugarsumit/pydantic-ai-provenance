@@ -18,7 +18,7 @@ Create a separate `ProvenanceCapability` for each agent. They will share a store
 
 ```python
 from pydantic_ai import Agent
-from pydantic_ai_provenance import ProvenanceCapability, to_mermaid
+from pydantic_ai_provenance.capability import ProvenanceCapability
 
 research_cap = ProvenanceCapability(
     agent_name="researcher",
@@ -63,7 +63,7 @@ async def main():
     # Both agents share the same store
     store = coordinator_cap.store
 
-    print(to_mermaid(store))  # full DAG including both agents
+    print(store.to_mermaid())  # full DAG including both agents
 ```
 
 ---
@@ -73,7 +73,7 @@ async def main():
 After the run, `attribute_output` traces paths all the way back through the subagent to the original data sources:
 
 ```python
-from pydantic_ai_provenance import attribute_output
+from pydantic_ai_provenance.attribution import attribute_output
 
 attribution = attribute_output(coordinator_cap.store)
 print(attribution.summary())

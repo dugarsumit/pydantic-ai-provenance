@@ -22,7 +22,6 @@ from pydantic_ai import Agent
 
 from pydantic_ai_provenance.attribution import attribute_output
 from pydantic_ai_provenance.capability import ProvenanceCapability
-from pydantic_ai_provenance.viz import to_mermaid
 
 
 async def main() -> None:
@@ -61,15 +60,15 @@ async def main() -> None:
     print(f"\nOutput: {result.output}\n")
     print(attribution.summary())
     print("\n--- Mermaid diagram ---")
-    print(to_mermaid(store))
+    print(store.to_mermaid())
 
     out = str(result.output)
-    print_citation_verification(store, label="model final output", text=out)
+    await print_citation_verification(store, label="model final output", text=out)
 
     d_keys = [k for k in store.citation_summary() if k.startswith("d_")]
     if d_keys:
         demo = f"The file says a quick brown fox jumps. [REF|{d_keys[0]}] Mixed with [REF|totally_fake_key]."
-        print_citation_verification(store, label="synthetic (valid + bogus keys)", text=demo)
+        await print_citation_verification(store, label="synthetic (valid + bogus keys)", text=demo)
 
 
 if __name__ == "__main__":

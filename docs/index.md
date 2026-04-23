@@ -17,7 +17,7 @@ Attach `ProvenanceCapability` to any pydantic-ai agent and get a complete, audit
 └──────────┘                └───────────┘               │  [REF|d_1]"  │
                                                          └──────────────┘
                                                                 │
-                                                  verify_citations_sync()
+                                                  provenance.verify()
                                                                 │
                                                      ✓ TF-IDF overlap check
 ```
@@ -47,12 +47,8 @@ uv add pydantic-ai-provenance
 ```python
 import asyncio
 from pydantic_ai import Agent
-from pydantic_ai_provenance import (
-    ProvenanceCapability,
-    attribute_output,
-    to_mermaid,
-    verify_citations_sync,
-)
+from pydantic_ai_provenance.capability import ProvenanceCapability
+from pydantic_ai_provenance.attribution import attribute_output
 
 provenance = ProvenanceCapability(
     agent_name="summariser",
@@ -73,8 +69,8 @@ async def main():
     store = provenance.store
 
     print(attribute_output(store).summary())   # path-level attribution
-    print(to_mermaid(store))                   # copy into mermaid.live
-    report = verify_citations_sync(result.output, store)
+    print(store.to_mermaid())                  # copy into mermaid.live
+    report = await provenance.verify(result.output)
     print(report.text_with_verified_citations) # citations validated
 
 asyncio.run(main())
