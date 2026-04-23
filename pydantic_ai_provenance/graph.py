@@ -10,8 +10,7 @@ from typing import Any
 
 class NodeType(str, Enum):
     INPUT = "input"
-    FILE_READ = "file_read"
-    URL_READ = "url_read"
+    DATA_READ = "data_read"
     TOOL_CALL = "tool_call"
     TOOL_RESULT = "tool_result"
     MODEL_REQUEST = "model_request"
@@ -81,7 +80,7 @@ class ProvenanceGraph:
         return [n for n in self.nodes.values() if n.type == NodeType.FINAL_OUTPUT]
 
     def source_nodes(self) -> list[ProvenanceNode]:
-        return [n for n in self.nodes.values() if n.type in (NodeType.INPUT, NodeType.FILE_READ)]
+        return [n for n in self.nodes.values() if n.type in (NodeType.INPUT, NodeType.DATA_READ)]
 
     def ancestors(self, node_id: str) -> set[str]:
         """Return all ancestor node IDs via BFS."""
@@ -96,8 +95,8 @@ class ProvenanceGraph:
         return visited
 
     def all_paths_to_sources(self, node_id: str) -> list[list[ProvenanceNode]]:
-        """Return all paths from source nodes (INPUT/FILE_READ) to node_id, reversed."""
-        source_types = {NodeType.INPUT, NodeType.FILE_READ}
+        """Return all paths from source nodes (INPUT/DATA_READ) to node_id, reversed."""
+        source_types = {NodeType.INPUT, NodeType.DATA_READ}
         completed: list[list[ProvenanceNode]] = []
 
         def dfs(current_id: str, path: list[ProvenanceNode]) -> None:

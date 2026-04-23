@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from .graph import NodeType, ProvenanceGraph, ProvenanceNode
 from .store import ProvenanceStore
 
-_SOURCE_TYPES = {NodeType.INPUT, NodeType.FILE_READ}
+_SOURCE_TYPES = {NodeType.INPUT, NodeType.DATA_READ}
 
 
 @dataclass
@@ -46,7 +46,7 @@ class AttributionResult:
             return "\n".join(lines)
         lines.append(f"Contributing sources ({len(self.sources)}):")
         for src in self.sources:
-            tag = "[file/data]" if src.type == NodeType.FILE_READ else "[input]"
+            tag = "[data]" if src.type == NodeType.DATA_READ else "[input]"
             lines.append(f"  {tag} {src.label}")
         lines.append("")
         lines.append(f"Attribution paths ({len(self.paths)}):")

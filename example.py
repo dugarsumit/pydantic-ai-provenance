@@ -21,8 +21,11 @@ Anthropic (alternative):
 from __future__ import annotations
 
 import asyncio
+import json
 import os
+import shutil
 import sys
+import textwrap
 from pathlib import Path
 from typing import Any
 
@@ -85,52 +88,135 @@ def _user_prompt_text(content: str | object) -> str:
     return repr(content)
 
 
+def _io_term_width() -> int:
+    try:
+        return max(64, min(120, shutil.get_terminal_size().columns))
+    except OSError:
+        return 96
+
+
+def _io_rule(char: str = "-", *, strong: bool = False) -> None:
+    w = _io_term_width()
+    line = ("=" if strong else char) * w
+    print(line)
+
+
+def _io_heading(lines: list[str], *, strong: bool = False) -> None:
+    _io_rule(strong=strong)
+    for line in lines:
+        print(line)
+    _io_rule(strong=strong)
+
+
+def _io_maybe_pretty_json(s: str) -> str:
+    t = s.strip()
+    if not t:
+        return s
+    try:
+        return json.dumps(json.loads(t), indent=2, ensure_ascii=False)
+    except (json.JSONDecodeError, TypeError, ValueError):
+        return s
+
+
+def _io_truncate(text: str, max_chars: int) -> str:
+    if len(text) <= max_chars:
+        return text
+    head = max_chars - 80
+    return text[:head] + f"\n\n… [{len(text) - head:,} more characters omitted; total {len(text):,}]"
+
+
+def _io_print_body(text: str, *, max_chars: int = 16_000) -> None:
+    body = _io_truncate(text, max_chars) if text else "(empty)"
+    w = _io_term_width()
+    prefix = "    "
+    avail = max(20, w - len(prefix))
+    for raw in body.splitlines():
+        if len(raw) <= avail:
+            print(f"{prefix}{raw}")
+            continue
+        wrapped = textwrap.fill(
+            raw,
+            width=avail,
+            initial_indent=prefix,
+            subsequent_indent=prefix,
+            break_long_words=True,
+            break_on_hyphens=False,
+        )
+        print(wrapped)
+    print()
+
+
 def print_model_io(result: AgentRunResult[Any], *, heading: str) -> None:
     """Print each model request/response from this run (from `result.new_messages()`)."""
-    print("\n" + "=" * 60)
-    print(heading)
-    print("=" * 60)
+    print()
+    _io_heading([heading.center(_io_term_width())], strong=True)
 
     for i, msg in enumerate(result.new_messages(), 1):
+        print()
         if isinstance(msg, ModelRequest):
-            print(f"\n--- [{i}] Model input (request to the LLM) ---")
+            _io_heading(
+                [
+                    f"  [{i}]  MODEL REQUEST  ->  LLM",
+                    f"      parts: {len(msg.parts)}",
+                ]
+            )
             if msg.instructions:
-                print("(instructions merged into this request)\n")
-                print(msg.instructions)
-                print()
+                print("  (instructions merged into this request)")
+                _io_print_body(msg.instructions, max_chars=12_000)
             for j, part in enumerate(msg.parts, 1):
+                sub = f"  [{i}.{j}]"
+                _io_rule("-")
                 if isinstance(part, SystemPromptPart):
-                    print(f"[{i}.{j}] system prompt\n{part.content}\n")
+                    print(f"{sub}  system prompt")
+                    _io_print_body(part.content)
                 elif isinstance(part, UserPromptPart):
-                    print(f"[{i}.{j}] user prompt\n{_user_prompt_text(part.content)}\n")
+                    print(f"{sub}  user prompt")
+                    _io_print_body(_user_prompt_text(part.content))
                 elif isinstance(part, ToolReturnPart | BuiltinToolReturnPart):
-                    body = part.model_response_str()
+                    body = part.model_response_str() or repr(part.content)
                     print(
-                        f"[{i}.{j}] tool result: {part.tool_name!r} "
-                        f"(tool_call_id={part.tool_call_id!r})\n{body or repr(part.content)}\n"
+                        f"{sub}  tool result  |  tool={part.tool_name!r}  "
+                        f"tool_call_id={part.tool_call_id!r}"
                     )
+                    _io_print_body(_io_maybe_pretty_json(body) if body.strip().startswith(("{", "[")) else body)
                 elif isinstance(part, RetryPromptPart):
-                    print(f"[{i}.{j}] retry prompt (tool={part.tool_name!r})\n{part.content!r}\n")
+                    print(f"{sub}  retry prompt  |  tool={part.tool_name!r}")
+                    _io_print_body(repr(part.content))
                 else:
-                    print(f"[{i}.{j}] {type(part).__name__}\n{part!r}\n")
+                    print(f"{sub}  {type(part).__name__}")
+                    _io_print_body(repr(part))
         elif isinstance(msg, ModelResponse):
             u = msg.usage
-            print(
-                f"\n--- [{i}] Model output (response from the LLM; "
-                f"model={msg.model_name!r}; tokens in={u.request_tokens} out={u.response_tokens}) ---"
+            _io_heading(
+                [
+                    f"  [{i}]  MODEL RESPONSE  <-  LLM",
+                    f"      model={msg.model_name!r}   "
+                    f"tokens  in={u.request_tokens}  out={u.response_tokens}",
+                ]
             )
             for j, part in enumerate(msg.parts, 1):
+                sub = f"  [{i}.{j}]"
+                _io_rule("-")
                 if isinstance(part, TextPart):
-                    print(f"[{i}.{j}] assistant text\n{part.content}\n")
+                    print(f"{sub}  assistant text")
+                    _io_print_body(part.content)
                 elif isinstance(part, ToolCallPart | BuiltinToolCallPart):
-                    print(f"[{i}.{j}] tool call: {part.tool_name!r}\n{part.args_as_json_str()}\n")
+                    raw_args = part.args_as_json_str()
+                    pretty = _io_maybe_pretty_json(raw_args)
+                    print(f"{sub}  tool call  |  tool={part.tool_name!r}")
+                    _io_print_body(pretty)
                 elif isinstance(part, ThinkingPart) and part.content:
-                    clipped = part.content if len(part.content) <= 4000 else part.content[:4000] + "\n…"
-                    print(f"[{i}.{j}] thinking ({len(part.content)} chars)\n{clipped}\n")
+                    n = len(part.content)
+                    cap = 4_000
+                    body = part.content if n <= cap else part.content[:cap] + f"\n\n… [{n - cap:,} more chars]"
+                    print(f"{sub}  thinking  ({n:,} chars)")
+                    _io_print_body(body, max_chars=cap + 200)
                 else:
-                    print(f"[{i}.{j}] {type(part).__name__}\n{part!r}\n")
+                    print(f"{sub}  {type(part).__name__}")
+                    _io_print_body(repr(part))
         else:
-            print(f"\n--- [{i}] {type(msg).__name__} ---\n{msg!r}\n")
+            _io_heading([f"  [{i}]  {type(msg).__name__}"])
+            _io_print_body(repr(msg))
 
 
 def print_citation_verification(store: ProvenanceStore, *, label: str, text: str) -> None:
@@ -202,10 +288,10 @@ async def example_single_agent() -> None:
     out = str(result.output)
     print_citation_verification(store, label="model final output", text=out)
     summary_keys = list(store.citation_summary().keys())
-    f_keys = [k for k in summary_keys if k.startswith("f_")]
-    if f_keys:
+    d_keys = [k for k in summary_keys if k.startswith("d_")]
+    if d_keys:
         demo = (
-            f"The file says a quick brown fox jumps. [REF|{f_keys[0]}] "
+            f"The file says a quick brown fox jumps. [REF|{d_keys[0]}] "
             "Mixed with [REF|totally_fake_key]."
         )
         print_citation_verification(store, label="synthetic (valid + bogus keys)", text=demo)
@@ -287,9 +373,9 @@ async def example_multi_agent() -> None:
     print(f"\nOutput: {result.output}\n")
     out = str(result.output)
     print_citation_verification(store, label="coordinator final output", text=out)
-    u_keys = [k for k in store.citation_summary().keys() if k.startswith("u_")]
-    if u_keys:
-        demo = f"Pydantic AI is a framework. [REF|{u_keys[0]}] See [REF|bad_u]."
+    d_keys = [k for k in store.citation_summary().keys() if k.startswith("d_")]
+    if d_keys:
+        demo = f"Pydantic AI is a framework. [REF|{d_keys[0]}] See [REF|bad_u]."
         print_citation_verification(store, label="synthetic (valid + bogus keys)", text=demo)
 
 

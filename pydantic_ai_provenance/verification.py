@@ -7,7 +7,7 @@ from typing import Any, Protocol, cast
 
 from pydantic import BaseModel, Field
 
-from .citations import citation_spans, is_agent_key, is_file_key, is_url_key
+from .citations import citation_spans, is_agent_key, is_data_key
 from .graph import NodeType, ProvenanceGraph
 from .store import ProvenanceStore
 
@@ -31,7 +31,7 @@ def _strip_ref_block_header(text: str) -> str:
 
 
 def tool_result_raw_text(store: ProvenanceStore, source_call_node_id: str) -> str | None:
-    """Return the raw tool result string for a FILE_READ / URL_READ call node."""
+    """Return the raw tool result string for a DATA_READ call node."""
     graph = store.graph
     for succ in graph.successors(source_call_node_id):
         if succ.type == NodeType.TOOL_RESULT:
@@ -48,7 +48,7 @@ def citation_resolved_text(store: ProvenanceStore, key: str) -> str | None:
     node = store.graph.nodes.get(node_id)
     if node is None:
         return None
-    if node.type in (NodeType.FILE_READ, NodeType.URL_READ):
+    if node.type == NodeType.DATA_READ:
         raw = tool_result_raw_text(store, node_id)
         if raw is None:
             return None
@@ -71,9 +71,9 @@ def cited_in_source_node_ids(graph: ProvenanceGraph, target_node_id: str) -> lis
 def expand_citation_texts_for_overlap(store: ProvenanceStore, key: str) -> list[tuple[str, str]]:
     """Return ``(key_or_leaf, text)`` segments to score for lexical overlap.
 
-    For ``f_*`` / ``u_*`` returns a single segment. For ``a_*`` (final output),
-    includes that output plus any direct ``cited_in`` sources (e.g. underlying
-    ``f_*``) when those edges exist, so overlap can be checked against primary
+    For ``d_*`` (and legacy ``f_*`` / ``u_*``) returns a single segment. For ``a_*``
+    (final output), includes that output plus any direct ``cited_in`` sources (e.g.
+    underlying data keys) when those edges exist, so overlap can be checked against primary
     documents as well as the wrapped agent answer.
     """
     node_id = store.resolve_citation(key)
@@ -452,10 +452,8 @@ def verify_citations_sync(
 
 # Re-export key-type helpers for callers building UIs
 def citation_key_kind(key: str) -> str:
-    if is_file_key(key):
-        return "file"
-    if is_url_key(key):
-        return "url"
+    if is_data_key(key):
+        return "data"
     if is_agent_key(key):
         return "agent"
     return "unknown"

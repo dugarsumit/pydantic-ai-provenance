@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-# Matches [REF|f_1], [REF|u_1], [REF|a_1], [REF|f_1|f_2], [REF|f_1|a_2], etc.
+# Matches [REF|d_1], [REF|a_1], [REF|d_1|d_2], [REF|d_1|a_2], etc.
 # Single brackets, REF sentinel, then one or more pipe-separated citation keys.
 # Keys are valid identifiers (letter/underscore start, alphanumeric/underscore body).
 _CITATION_RE = re.compile(
@@ -15,19 +15,17 @@ _FILE_ARG_PRIORITY = ("path", "file", "filename", "filepath", "url", "uri", "sou
 
 # Citation key prefixes — baked into store-generated keys so the graph is
 # human-readable without needing to look up the registry.
-KEY_PREFIX_FILE = "f"
+KEY_PREFIX_DATA = "d"
 KEY_PREFIX_AGENT = "a"
-KEY_PREFIX_URL = "u"
 
 
-def is_file_key(key: str) -> bool:
-    return key.startswith(KEY_PREFIX_FILE + "_")
+def is_data_key(key: str) -> bool:
+    """True for current data-source keys (``d_*``)."""
+    return key.startswith(KEY_PREFIX_DATA + "_")
+
 
 def is_agent_key(key: str) -> bool:
     return key.startswith(KEY_PREFIX_AGENT + "_")
-
-def is_url_key(key: str) -> bool:
-    return key.startswith(KEY_PREFIX_URL + "_")
 
 
 @dataclass
@@ -35,9 +33,9 @@ class CitationRef:
     """A single [REF|...] tag parsed from an LLM response.
 
     One tag can cite multiple sources at once:
-        [REF|f_1|f_2|a_3]
+        [REF|d_1|d_2|a_3]
 
-    Each key in `refs` is an opaque identifier (e.g. "f_1", "a_2")
+    Each key in `refs` is an opaque identifier (e.g. "d_1", "a_2")
     assigned by the store at source-registration time. Resolve any key via
     ProvenanceStore.resolve_citation() to get its ProvenanceNode and full
     metadata (file path, agent name, run_id, etc.).
@@ -122,5 +120,6 @@ def format_cited_content(result: object, citation_key: str) -> str:
     ``[REF|...]`` tags inside *result* are stripped before wrapping so nested
     payloads do not duplicate markers in the body.
     """
-    content = strip_inline_citation_tags(str(result))
+    # content = strip_inline_citation_tags(str(result))
+    content = str(result)
     return f"[REF|{citation_key}]\n{content}"

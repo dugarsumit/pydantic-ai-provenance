@@ -3,7 +3,7 @@ from __future__ import annotations
 from contextvars import ContextVar
 from dataclasses import dataclass, field
 
-from .citations import KEY_PREFIX_AGENT, KEY_PREFIX_FILE, KEY_PREFIX_URL
+from .citations import KEY_PREFIX_AGENT, KEY_PREFIX_DATA
 from .graph import ProvenanceEdge, ProvenanceGraph, ProvenanceNode
 
 
@@ -20,7 +20,7 @@ class ProvenanceStore:
 
     # Unified citation registry: citation_key → node_id.
     #
-    # Keys are short identifiers like "f_1" or "a_2" assigned at registration.
+    # Keys are short identifiers like "d_1" or "a_2" assigned at registration.
     # Tool/agent payloads use a leading ``[REF|<key>]`` line; inline tags in the
     # body are stripped when formatting. The final user-facing reply may contain
     # ``[REF|…]`` tags parsed for ``cited_in`` edges.
@@ -29,7 +29,7 @@ class ProvenanceStore:
     # corresponding ProvenanceNode — resolved via graph.nodes[node_id].
     #
     # Shared across all agents in a session, so:
-    #  - multiple reads of the same file each get a distinct key (file_1, file_2)
+    #  - multiple reads of the same resource each get a distinct key (d_1, d_2)
     #  - subagent citations resolve to nodes created by parent agents
     _citation_registry: dict[str, str] = field(default_factory=dict)
     _citation_counter: int = field(default=0)
@@ -42,31 +42,17 @@ class ProvenanceStore:
 
     # --- Citation registry ---
 
-    def register_file_source(self, node_id: str) -> str:
-        """Assign a unique citation key to a FILE_READ node and register it.
+    def register_data_source(self, node_id: str) -> str:
+        """Assign a unique citation key to a DATA_READ node and register it.
 
-        Each call — even for the same file path — produces a distinct key,
-        so multiple reads of the same file are tracked independently.
+        Each call — even for the same underlying resource — produces a distinct key,
+        so multiple reads are tracked independently.
 
-        Returns the citation key (e.g. "f_1") to embed in the formatted
+        Returns the citation key (e.g. "d_1") to embed in the formatted
         tool result shown to the LLM.
         """
         self._citation_counter += 1
-        key = f"{KEY_PREFIX_FILE}_{self._citation_counter}"
-        self._citation_registry[key] = node_id
-        return key
-    
-    def register_url_source(self, node_id: str) -> str:
-        """Assign a unique citation key to a url_read node and register it.
-
-        Each call — even for the same file path — produces a distinct key,
-        so multiple reads of the same file are tracked independently.
-
-        Returns the citation key (e.g. "u_1") to embed in the formatted
-        tool result shown to the LLM.
-        """
-        self._citation_counter += 1
-        key = f"{KEY_PREFIX_URL}_{self._citation_counter}"
+        key = f"{KEY_PREFIX_DATA}_{self._citation_counter}"
         self._citation_registry[key] = node_id
         return key
 

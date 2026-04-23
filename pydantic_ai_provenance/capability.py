@@ -61,18 +61,78 @@ def _strip_inline_refs_from_request_context(request_context: Any) -> None:
                 part.content = strip_inline_citation_tags(content)
 
 
-_CITATION_INSTRUCTIONS = """
-Source material (tool results, delegated agent output) begins with a header line:
-  [REF|<key>]
-where <key> is an identifier such as f_1, u_2, or a_3. That first line identifies the block;
-do not treat it as an inline citation in your own prose.
+# _CITATION_INSTRUCTIONS = """
+# Source material (tool results, delegated agent output) begins with a header line:
+#   [REF|<key>]
+# where <key> is an identifier such as f_1, u_2, or a_3. That first line identifies the block;
+# do not treat it as an inline citation in your own prose.
 
-Only in your **final** message to the user, after a span that draws on such a source,
-add an inline citation using exactly:
-  [REF|<key>]
-If a span uses multiple sources, list every key in one tag, pipe-separated:
-  [REF|key1|key2]
-Do not put [REF|...] tags in assistant messages before the final answer; reserve them for the last user-facing reply.
+# Only in your **final** message to the user, after a span that draws on such a source,
+# add an inline citation using exactly:
+#   [REF|<key>]
+# If a span uses multiple sources, list every key in one tag, pipe-separated:
+#   [REF|key1|key2]
+# Do not put [REF|...] tags in assistant messages before the final answer; reserve them for the last user-facing reply.
+# """
+
+# _CITATION_INSTRUCTIONS = """
+# Cite provided sources using [REF|<key>] inline, placed immediately after
+# the specific claim or fact that relies on that source.
+
+# WHEN TO CITE:
+# - Specific facts, statistics, numbers, or dates drawn from a source.
+# - Direct claims, conclusions, or findings attributable to a source.
+# - Technical details, definitions, or domain-specific information from a source.
+# - When paraphrasing or summarizing a source's argument or position.
+# - If multiple sources support the same claim, list all: [REF|key1|key2].
+
+# WHEN NOT TO CITE:
+# - Your own reasoning, synthesis, or logical connectives between ideas.
+# - Widely known or common-sense statements (e.g. "the sky is blue").
+# - Transitional phrases, introductions, or structural language
+#   ("Here's a summary...", "In other words...", "Let's look at...").
+# - Conclusions you derive by combining information across sources
+#   — unless restating a specific source's conclusion.
+# - Repeated references to the same fact within the same paragraph;
+#   cite on first mention, then omit for immediate follow-up sentences
+#   about the same point.
+
+# RULES:
+# - Use ONLY the <key> from each source's [REF|<key>] header.
+# - Never invent or hallucinate citation keys.
+# - Never use any other citation format (no footnotes, no numbered brackets, no URLs).
+# - Aim for precision over volume — one well-placed citation is better than
+#   five redundant ones.
+# """
+
+_CITATION_INSTRUCTIONS = """
+FORMAT:
+- Single source: [REF|<key>]
+- Multiple sources for one claim: [REF|key1|key2]
+- Place the tag immediately after the claim it supports.
+- Use ONLY keys from [REF|<key>] headers in provided sources.
+- Never invent keys or use any other citation style.
+
+WHEN TO CITE:
+- Specific facts, statistics, numbers, or dates from a source.
+- Claims, conclusions, or findings attributable to a source.
+- Technical details or definitions from a source.
+- Paraphrased or summarized arguments from a source.
+
+WHEN NOT TO CITE:
+- Your own reasoning, synthesis, or connective language.
+- Common-sense or widely known statements.
+- Transitional or structural phrases.
+- A point you already cited earlier in the same response; cite on first mention only.
+
+CITATION DEPTH:
+- Always cite the most specific source available.
+- If a subagent result [REF|a_X] contains inline original-source citations [REF|d_X], use the original keys, not a_X.
+- Use [REF|a_X] only when a claim has no traceable original key.
+- Never combine both: no [REF|a_X|d_Y].
+
+Do not add a "Notes on sources" or summary-of-sources section.
+Aim for precision over volume.
 """
 
 
@@ -82,17 +142,15 @@ class ProvenanceCapability(AbstractCapability):
 
     source_tools: names of tools whose return values are raw data sources
     (file readers, API fetchers, etc.). Each invocation gets a unique citation
-    key (e.g. "file_1", "file_2") so multiple reads of the same file are
+    key (e.g. "d_1", "d_2") so multiple reads of the same resource are
     tracked independently. Source tool results are wrapped as ``[REF|<key>]`` on
     the first line, with inline ``[REF|...]`` tags stripped from the body so only
-    the block header carries the key in tool text. Before each model call, prior
-    message parts are scrubbed of inline tags while preserving that opening tool
-    header line. The model is instructed to emit inline ``[REF|...]`` only in its
-    final user-facing message.
+    the block header carries the key in tool text. The model is instructed to emit
+    inline ``[REF|...]`` only in its final user-facing message.
 
     When a tool calls a subagent, the subagent's return value is wrapped the same
     way for the parent. These resolve through the shared store
-    back to the original FILE_READ nodes for full transitive attribution.
+    back to the original DATA_READ nodes for full transitive attribution.
 
     inject_citation_instructions: when True (default) and source_tools is
     non-empty, citation format instructions are injected automatically via
@@ -264,7 +322,8 @@ class ProvenanceCapability(AbstractCapability):
         store = self._store
         assert store is not None
 
-        _strip_inline_refs_from_request_context(request_context)
+        # Scrubbing inline [REF|...] from prior messages before the model is disabled.
+        # _strip_inline_refs_from_request_context(request_context)
 
         request_node = ProvenanceNode.create(
             type=NodeType.MODEL_REQUEST,
@@ -333,13 +392,7 @@ class ProvenanceCapability(AbstractCapability):
         assert store is not None
 
         is_source = call.tool_name in self.source_tools
-        node_type = NodeType.TOOL_CALL
-        if is_source:
-            if "url" in call.tool_name:
-                node_type = NodeType.URL_READ
-            else:
-                node_type = NodeType.FILE_READ
-        # node_type = NodeType.FILE_READ if is_source else NodeType.TOOL_CALL
+        node_type = NodeType.DATA_READ if is_source else NodeType.TOOL_CALL
         label_prefix = "[source] " if is_source else ""
         file_path: str | None = extract_file_path(args) if is_source else None
 
@@ -355,16 +408,13 @@ class ProvenanceCapability(AbstractCapability):
         )
         store.add_node(call_node)
 
-        # Register the file source immediately — before the tool runs — so any
+        # Register the data source immediately — before the tool runs — so any
         # subagent spawned inside the tool can already resolve citations against it.
-        # Each call gets its own unique key, so the same file read twice produces
-        # "f_1" and "f_2" as distinct, independently traceable sources.
+        # Each call gets its own unique key, so the same resource read twice produces
+        # "d_1" and "d_2" as distinct, independently traceable sources.
         citation_key: str | None = None
         if is_source:
-            if node_type == NodeType.FILE_READ:
-                citation_key = store.register_file_source(call_node.id)
-            elif node_type == NodeType.URL_READ:
-                citation_key = store.register_url_source(call_node.id)
+            citation_key = store.register_data_source(call_node.id)
 
         if self._last_sequential_node_id:
             store.add_edge(self._last_sequential_node_id, call_node.id, "calls")
@@ -448,7 +498,7 @@ class ProvenanceCapability(AbstractCapability):
         then adds a "cited_in" edge: source_node → target_node.
 
         Because the registry is shared across the entire session, a subagent
-        citing ref=f_1 correctly resolves back to a FILE_READ node created
+        citing ref=d_1 correctly resolves back to a DATA_READ node created
         by a parent agent — giving full transitive attribution across any
         number of agent hops.
         """

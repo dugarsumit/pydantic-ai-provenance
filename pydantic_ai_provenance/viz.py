@@ -9,8 +9,7 @@ from .store import ProvenanceStore
 # Node styling per type
 _MERMAID_SHAPES: dict[NodeType, tuple[str, str]] = {
     NodeType.INPUT:          ("([",  "])"),
-    NodeType.FILE_READ:      ("[(", ")]"),
-    NodeType.URL_READ:       ("[(", ")]"),
+    NodeType.DATA_READ:      ("[(", ")]"),
     NodeType.TOOL_CALL:      ("[",   "]"),
     NodeType.TOOL_RESULT:    ("[",   "]"),
     NodeType.MODEL_REQUEST:  ("{",   "}"),
@@ -21,8 +20,7 @@ _MERMAID_SHAPES: dict[NodeType, tuple[str, str]] = {
 
 _MERMAID_STYLES: dict[NodeType, str] = {
     NodeType.INPUT:          "fill:#4A90D9,color:#fff,stroke:#2c6fad",
-    NodeType.FILE_READ:      "fill:#27AE60,color:#fff,stroke:#1a7a43",
-    NodeType.URL_READ:       "fill:#27AE60,color:#fff,stroke:#1a7a43",
+    NodeType.DATA_READ:      "fill:#27AE60,color:#fff,stroke:#1a7a43",
     NodeType.TOOL_CALL:      "fill:#E67E22,color:#fff,stroke:#b05d10",
     NodeType.TOOL_RESULT:    "fill:#F39C12,color:#fff,stroke:#b07a0e",
     NodeType.MODEL_REQUEST:  "fill:#8E44AD,color:#fff,stroke:#6a3080",
@@ -33,8 +31,7 @@ _MERMAID_STYLES: dict[NodeType, str] = {
 
 _DOT_COLORS: dict[NodeType, str] = {
     NodeType.INPUT:          "#4A90D9",
-    NodeType.FILE_READ:      "#27AE60",
-    NodeType.URL_READ:       "#27AE60",
+    NodeType.DATA_READ:      "#27AE60",
     NodeType.TOOL_CALL:      "#E67E22",
     NodeType.TOOL_RESULT:    "#F39C12",
     NodeType.MODEL_REQUEST:  "#8E44AD",
@@ -94,7 +91,7 @@ def to_dot(store: ProvenanceStore, graph_name: str = "provenance") -> str:
         sid = _short_id(node.id)
         label = _escape_label(node.label)
         color = _DOT_COLORS.get(node.type, "#999999")
-        shape = "cylinder" if node.type == NodeType.FILE_READ else "box"
+        shape = "cylinder" if node.type == NodeType.DATA_READ else "box"
         lines.append(f'    {sid} [label="{label}", fillcolor="{color}", shape={shape}];')
 
     lines.append("")
