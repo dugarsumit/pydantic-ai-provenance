@@ -16,6 +16,10 @@ Azure OpenAI endpoints that require an API version query parameter.
 Anthropic (alternative):
 
     ANTHROPIC_API_KEY=... uv run python example.py
+
+Citation verification (no LLM keys required):
+
+    uv run python example.py --verify-only
 """
 
 from __future__ import annotations
@@ -51,9 +55,11 @@ from pydantic_ai_provenance import (
     ProvenanceCapability,
     ProvenanceStore,
     attribute_output,
+    strip_unresolvable_citation_keys,
     to_mermaid,
     verify_citations_sync,
 )
+from pydantic_ai_provenance.graph import NodeType, ProvenanceNode
 
 
 def _use_azure_openai() -> bool:
@@ -220,26 +226,109 @@ def print_model_io(result: AgentRunResult[Any], *, heading: str) -> None:
 
 
 def print_citation_verification(store: ProvenanceStore, *, label: str, text: str) -> None:
-    """Run ``verify_citations_sync`` and print a short report (Steps 1–2)."""
+    """Print Step 1 via ``strip_unresolvable_citation_keys`` and Step 2 via ``verify_citations_sync``."""
+    from textwrap import shorten
+
     rep = verify_citations_sync(text, store)
     print("\n" + "-" * 60)
     print(f"Citation verification — {label}")
     print("-" * 60)
-    if rep.sanitize_records:
-        print(f"Step 1: {len(rep.sanitize_records)} tag(s) adjusted or removed")
-        for r in rep.sanitize_records:
-            print(f"  {r.raw_tag!r}: removed {r.keys_removed!r}, kept {r.keys_kept!r}")
+    _, sanitize_records = strip_unresolvable_citation_keys(text, store)
+    if sanitize_records:
+        print(f"Step 1: {len(sanitize_records)} tag(s) adjusted (``strip_unresolvable_citation_keys``)")
+        for r in sanitize_records:
+            print(f"  {r.raw_tag!r}: removed {r.removed_keys!r}, kept {r.retained_keys!r}")
     else:
-        print("Step 1: no invalid keys in citation tags")
-    if rep.sanitized_text != text:
-        clip = rep.sanitized_text if len(rep.sanitized_text) <= 400 else rep.sanitized_text[:400] + "…"
-        print(f"Sanitized text:\n{clip}\n")
-    print(f"Step 2: {len(rep.lexical)} lexical alignment row(s)")
-    for row in rep.lexical:
-        print(
-            f"  {row.citation_key!r} (vs {row.source_key!r}) "
-            f"overlap={row.overlap_ratio:.3f} claim={row.claim_excerpt!r}…"
+        print("Step 1: all citation keys resolve in the store")
+    if rep.text_with_verified_citations != rep.original_text:
+        clip = (
+            rep.text_with_verified_citations
+            if len(rep.text_with_verified_citations) <= 400
+            else rep.text_with_verified_citations[:400] + "…"
         )
+        print(f"Text after weak-key removal (Step 2 refine):\n{clip}\n")
+    rows = rep.claim_source_similarities
+    print(f"Step 2: {len(rows)} claim↔source TF-IDF row(s)")
+    headers = ["claim_key", "max_cos", "source_keys", "claim_ctx", "best_source_clip"]
+    row_data: list[list[str]] = []
+    for row in rows:
+        scores = row.scores
+        if scores:
+            bi = max(range(len(scores)), key=lambda i: scores[i])
+            max_cos = f"{scores[bi]:.3f}"
+            best_src = shorten(row.source_excerpts[bi].replace("\n", " "), width=48, placeholder="…")
+        else:
+            max_cos = "—"
+            best_src = "—"
+        keys_s = ",".join(row.source_keys) if row.source_keys else "—"
+        row_data.append(
+            [
+                row.claim_key,
+                max_cos,
+                shorten(keys_s, width=28, placeholder="…"),
+                shorten(row.claim_excerpt.replace("\n", " "), width=40, placeholder="…"),
+                best_src,
+            ]
+        )
+    if not row_data:
+        print("  (no resolvable inline [REF|…] spans with backing source text)")
+        return
+    col_widths = [max(len(str(r[i])) for r in ([headers] + row_data)) for i in range(len(headers))]
+
+    def row_line(fields: list[str]) -> str:
+        return " | ".join(str(f).ljust(col_widths[i]) for i, f in enumerate(fields))
+
+    print(row_line(headers))
+    print("-+-".join("-" * w for w in col_widths))
+    for r in row_data:
+        print(row_line(r))
+
+
+def _minimal_data_read_store(source_body: str, *, file_path: str = "demo.txt") -> tuple[ProvenanceStore, str]:
+    """Build a store with one DATA_READ → TOOL_RESULT chain and return its citation key."""
+    store = ProvenanceStore()
+    run_id = "offline-demo"
+    data_read = ProvenanceNode.create(
+        NodeType.DATA_READ,
+        "read_file",
+        "demo",
+        run_id,
+        file_path=file_path,
+    )
+    store.add_node(data_read)
+    citation_key = store.register_data_source(data_read.id)
+    tool_result = ProvenanceNode.create(
+        NodeType.TOOL_RESULT,
+        "Result: read_file",
+        "demo",
+        run_id,
+        tool_name="read_file",
+        result=source_body,
+    )
+    store.add_node(tool_result)
+    store.add_edge(data_read.id, tool_result.id, "returns")
+    return store, citation_key
+
+
+def example_verification_offline() -> None:
+    """Exercise ``verify_citations_sync`` on a synthetic graph (no API keys)."""
+    print("=" * 60)
+    print("Verification smoke test (offline)")
+    print("=" * 60)
+    source = "The quick brown fox jumps over the lazy dog near the river bank."
+    store, dkey = _minimal_data_read_store(source)
+
+    good = f"The passage mentions a quick brown fox. [REF|{dkey}]"
+    _io_heading(["Case A — claim aligns with source (expect non-empty [REF|…] after refine)"])
+    print_citation_verification(store, label="aligned claim", text=good)
+
+    bad_keys = f"A fox appears in the story. [REF|{dkey}|not_a_real_key]"
+    _io_heading(["Case B — mixed valid + bogus keys (Step 1 strips bogus)"])
+    print_citation_verification(store, label="sanitize + verify", text=bad_keys)
+
+    weak = "Quantum entanglement enables superluminal routers. [REF|{dkey}]".replace("{dkey}", dkey)
+    _io_heading(["Case C — claim unrelated to source (expect weak TF-IDF; tag may be dropped)"])
+    print_citation_verification(store, label="misaligned claim", text=weak)
 
 
 # ---------------------------------------------------------------------------
@@ -381,12 +470,16 @@ async def example_multi_agent() -> None:
 
 if __name__ == "__main__":
     load_dotenv(Path(__file__).resolve().parent / ".env")
+    if len(sys.argv) > 1 and sys.argv[1] in ("--verify-only", "-V"):
+        example_verification_offline()
+        raise SystemExit(0)
     if not _use_azure_openai() and not os.environ.get("ANTHROPIC_API_KEY"):
         print(
             "Configure credentials: set AZURE_OPENAI_ENDPOINT and AZURE_OPENAI_API_KEY "
-            "for Azure OpenAI, or ANTHROPIC_API_KEY for Anthropic.",
+            "for Azure OpenAI, or ANTHROPIC_API_KEY for Anthropic. "
+            "Or run: uv run python example.py --verify-only",
             file=sys.stderr,
         )
         raise SystemExit(1)
-    # sasyncio.run(example_single_agent())
+    # asyncio.run(example_single_agent())
     asyncio.run(example_multi_agent())

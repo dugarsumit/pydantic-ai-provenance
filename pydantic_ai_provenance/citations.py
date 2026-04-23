@@ -90,7 +90,7 @@ def strip_inline_citation_tags_preserve_leading_ref_header(text: str) -> str:
     return strip_inline_citation_tags(text)
 
 
-def citation_spans(text: str) -> list[tuple[int, int, CitationRef]]:
+def citation_tag_spans(text: str) -> list[tuple[int, int, CitationRef]]:
     """Like parse_citations but preserves each match's start/end indices in ``text``."""
     return [
         (
@@ -120,6 +120,5 @@ def format_cited_content(result: object, citation_key: str) -> str:
     ``[REF|...]`` tags inside *result* are stripped before wrapping so nested
     payloads do not duplicate markers in the body.
     """
-    # content = strip_inline_citation_tags(str(result))
     content = str(result)
     return f"[REF|{citation_key}]\n{content}"

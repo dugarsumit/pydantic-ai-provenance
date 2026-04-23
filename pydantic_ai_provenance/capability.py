@@ -13,97 +13,9 @@ from .citations import (
     extract_file_path,
     format_cited_content,
     parse_citations,
-    strip_inline_citation_tags,
-    strip_inline_citation_tags_preserve_leading_ref_header,
 )
 from .graph import NodeType, ProvenanceNode
 from .store import ProvenanceStore, _PROVENANCE_CTX
-
-def _strip_inline_refs_from_request_context(request_context: Any) -> None:
-    """Remove inline ``[REF|...]`` tags from message parts except static instructions.
-
-    Keeps system and instruction parts intact. Strips all tags from user text,
-    assistant text, thinking, etc. For **tool return** parts, keeps a single opening
-    ``[REF|<key>]`` header line and
-    strips only tags in the body below it.
-    """
-    from pydantic_ai.messages import (
-        InstructionPart,
-        ModelRequest,
-        ModelResponse,
-        SystemPromptPart,
-        ToolCallPart,
-        ToolReturnPart,
-    )
-
-    for msg in request_context.messages:
-        if isinstance(msg, ModelRequest):
-            parts = msg.parts
-        elif isinstance(msg, ModelResponse):
-            parts = msg.parts
-        else:
-            continue
-        for part in parts:
-            if isinstance(part, (SystemPromptPart, InstructionPart)):
-                continue
-            if isinstance(part, ToolCallPart):
-                if isinstance(part.args, str):
-                    part.args = strip_inline_citation_tags(part.args)
-                continue
-            if isinstance(part, ToolReturnPart):
-                if isinstance(part.content, str):
-                    part.content = strip_inline_citation_tags_preserve_leading_ref_header(
-                        part.content
-                    )
-                continue
-            content = getattr(part, "content", None)
-            if isinstance(content, str):
-                part.content = strip_inline_citation_tags(content)
-
-
-# _CITATION_INSTRUCTIONS = """
-# Source material (tool results, delegated agent output) begins with a header line:
-#   [REF|<key>]
-# where <key> is an identifier such as f_1, u_2, or a_3. That first line identifies the block;
-# do not treat it as an inline citation in your own prose.
-
-# Only in your **final** message to the user, after a span that draws on such a source,
-# add an inline citation using exactly:
-#   [REF|<key>]
-# If a span uses multiple sources, list every key in one tag, pipe-separated:
-#   [REF|key1|key2]
-# Do not put [REF|...] tags in assistant messages before the final answer; reserve them for the last user-facing reply.
-# """
-
-# _CITATION_INSTRUCTIONS = """
-# Cite provided sources using [REF|<key>] inline, placed immediately after
-# the specific claim or fact that relies on that source.
-
-# WHEN TO CITE:
-# - Specific facts, statistics, numbers, or dates drawn from a source.
-# - Direct claims, conclusions, or findings attributable to a source.
-# - Technical details, definitions, or domain-specific information from a source.
-# - When paraphrasing or summarizing a source's argument or position.
-# - If multiple sources support the same claim, list all: [REF|key1|key2].
-
-# WHEN NOT TO CITE:
-# - Your own reasoning, synthesis, or logical connectives between ideas.
-# - Widely known or common-sense statements (e.g. "the sky is blue").
-# - Transitional phrases, introductions, or structural language
-#   ("Here's a summary...", "In other words...", "Let's look at...").
-# - Conclusions you derive by combining information across sources
-#   — unless restating a specific source's conclusion.
-# - Repeated references to the same fact within the same paragraph;
-#   cite on first mention, then omit for immediate follow-up sentences
-#   about the same point.
-
-# RULES:
-# - Use ONLY the <key> from each source's [REF|<key>] header.
-# - Never invent or hallucinate citation keys.
-# - Never use any other citation format (no footnotes, no numbered brackets, no URLs).
-# - Aim for precision over volume — one well-placed citation is better than
-#   five redundant ones.
-# """
 
 _CITATION_INSTRUCTIONS = """
 FORMAT:
@@ -321,9 +233,6 @@ class ProvenanceCapability(AbstractCapability):
     ) -> Any:
         store = self._store
         assert store is not None
-
-        # Scrubbing inline [REF|...] from prior messages before the model is disabled.
-        # _strip_inline_refs_from_request_context(request_context)
 
         request_node = ProvenanceNode.create(
             type=NodeType.MODEL_REQUEST,
