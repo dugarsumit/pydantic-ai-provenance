@@ -108,13 +108,19 @@ print(report.text_with_verified_citations)
 
 ## Visualising the graph
 
+Open an interactive graph in the browser with one call:
+
+```python
+store.open_in_browser()
+```
+
+Or export as a Mermaid flowchart to paste into [mermaid.live](https://mermaid.live):
+
 ```python
 print(store.to_mermaid())
 ```
 
-Paste the output into [mermaid.live](https://mermaid.live) to see the full execution DAG.
-
-See [Visualization](guides/visualization.md) for Mermaid, GraphViz DOT, and JSON options.
+See [Visualization](guides/visualization.md) for interactive HTML, Mermaid, GraphViz DOT, and JSON options.
 
 ---
 

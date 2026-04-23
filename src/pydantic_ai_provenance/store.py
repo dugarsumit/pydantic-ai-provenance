@@ -66,6 +66,256 @@ def _escape_label(text: str) -> str:
     return text.replace('"', "'").replace("\n", " ")
 
 
+# ---------------------------------------------------------------------------
+# Interactive HTML template (Cytoscape.js + dagre, loaded from CDN)
+# ---------------------------------------------------------------------------
+
+_HTML_TEMPLATE = """\
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>__TITLE__</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{background:#ffffff;color:#1f2328;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;display:flex;height:100vh;overflow:hidden}
+    #cy{flex:1;background:#ffffff}
+    #sidebar{width:290px;background:#f6f8fa;border-left:1px solid #d0d7de;display:flex;flex-direction:column;min-width:0}
+    #title-bar{padding:14px 16px;border-bottom:1px solid #d0d7de}
+    #title-bar h1{font-size:15px;font-weight:600;color:#1f2328;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    #graph-stats{font-size:11px;color:#636c76;margin-top:3px}
+    #legend{padding:10px 16px;border-bottom:1px solid #d0d7de}
+    #legend-title{font-size:11px;font-weight:600;color:#636c76;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+    .legend-item{display:flex;align-items:center;gap:8px;padding:2px 0;font-size:12px;color:#1f2328}
+    .legend-swatch{width:12px;height:12px;border-radius:2px;flex-shrink:0}
+    #no-selection{padding:20px 16px;color:#636c76;font-size:13px;text-align:center}
+    #details{padding:14px 16px;flex:1;overflow-y:auto;display:none}
+    #details-label{font-size:14px;font-weight:600;color:#1f2328;margin-bottom:12px;word-break:break-all}
+    .dr{margin-bottom:10px}
+    .dl{font-size:10px;font-weight:600;color:#636c76;text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px}
+    .dv{font-size:12px;color:#1f2328;background:#eaeef2;padding:5px 7px;border-radius:4px;word-break:break-all;white-space:pre-wrap}
+    .badge{display:inline-block;padding:2px 9px;border-radius:10px;font-size:11px;font-weight:600;color:#fff}
+  </style>
+</head>
+<body>
+  <div id="cy"></div>
+  <div id="sidebar">
+    <div id="title-bar">
+      <h1>__TITLE__</h1>
+      <div id="graph-stats"></div>
+    </div>
+    <div id="legend">
+      <div id="legend-title">Node types</div>
+      <div id="legend-items"></div>
+    </div>
+    <div id="no-selection">Click a node to inspect it</div>
+    <div id="details">
+      <div id="details-label"></div>
+      <div id="details-body"></div>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.29.2/cytoscape.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/dagre/0.8.5/dagre.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/cytoscape-dagre@2.5.0/cytoscape-dagre.min.js"></script>
+  <script>
+    const rawGraph = __GRAPH_DATA__;
+
+    const NODE_COLORS = {
+      input:          "#4A90D9",
+      data_read:      "#27AE60",
+      tool_call:      "#E67E22",
+      tool_result:    "#F39C12",
+      model_request:  "#8E44AD",
+      model_response: "#9B59B6",
+      agent_run:      "#2C3E50",
+      final_output:   "#E74C3C",
+    };
+    const NODE_SHAPES = {
+      input:          "round-rectangle",
+      data_read:      "barrel",
+      tool_call:      "rectangle",
+      tool_result:    "rectangle",
+      model_request:  "diamond",
+      model_response: "diamond",
+      agent_run:      "cut-rectangle",
+      final_output:   "ellipse",
+    };
+    const NODE_DISPLAY = {
+      input:          "Input",
+      data_read:      "Data Read",
+      tool_call:      "Tool Call",
+      tool_result:    "Tool Result",
+      model_request:  "Model Request",
+      model_response: "Model Response",
+      agent_run:      "Agent Run",
+      final_output:   "Final Output",
+    };
+
+    // Build legend — node types (only those present in this graph)
+    const presentTypes = [...new Set(rawGraph.nodes.map(n => n.type))];
+    const legendItems = document.getElementById("legend-items");
+    for (const t of Object.keys(NODE_COLORS)) {
+      if (!presentTypes.includes(t)) continue;
+      const d = document.createElement("div");
+      d.className = "legend-item";
+      d.innerHTML = `<div class="legend-swatch" style="background:${NODE_COLORS[t]}"></div><span>${NODE_DISPLAY[t] || t}</span>`;
+      legendItems.appendChild(d);
+    }
+
+    // Build legend — citation key borders (only if any keys exist in this graph)
+    const hasDataKey  = rawGraph.nodes.some(n => n.citation_key && n.citation_key.startsWith("d_"));
+    const hasAgentKey = rawGraph.nodes.some(n => n.citation_key && n.citation_key.startsWith("a_"));
+    if (hasDataKey || hasAgentKey) {
+      const ckSection = document.createElement("div");
+      ckSection.style.cssText = "margin-top:10px;padding-top:8px;border-top:1px solid #d0d7de";
+      ckSection.innerHTML = `<div style="font-size:11px;font-weight:600;color:#636c76;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Citation keys</div>`;
+      if (hasDataKey) {
+        ckSection.innerHTML += `<div class="legend-item"><div class="legend-swatch" style="background:transparent;border:3px solid #D97706"></div><span>Data source (d_*)</span></div>`;
+      }
+      if (hasAgentKey) {
+        ckSection.innerHTML += `<div class="legend-item"><div class="legend-swatch" style="background:transparent;border:3px solid #2563EB"></div><span>Agent output (a_*)</span></div>`;
+      }
+      legendItems.appendChild(ckSection);
+    }
+
+    document.getElementById("graph-stats").textContent =
+      rawGraph.nodes.length + " nodes · " + rawGraph.edges.length + " edges";
+
+    // Build Cytoscape elements
+    const elements = [];
+    for (const node of rawGraph.nodes) {
+      const ck = node.citation_key || null;
+      const ckType = ck ? (ck.startsWith("d_") ? "data" : "agent") : null;
+      const displayLabel = ck ? node.label + "\\n[" + ck + "]" : node.label;
+      elements.push({ data: {
+        id: node.id, label: displayLabel, type: node.type,
+        agent_name: node.agent_name, run_id: node.run_id,
+        timestamp: node.timestamp, extra: node.data || {},
+        citation_key: ck, citation_key_type: ckType,
+      }});
+    }
+    for (const edge of rawGraph.edges) {
+      elements.push({ data: {
+        id: edge.source + "_" + edge.target,
+        source: edge.source, target: edge.target, label: edge.label || "",
+      }});
+    }
+
+    cytoscape.use(cytoscapeDagre);
+    const cy = cytoscape({
+      container: document.getElementById("cy"),
+      elements,
+      style: [
+        {
+          selector: "node",
+          style: {
+            label: "data(label)",
+            "text-valign": "center",
+            "text-halign": "center",
+            "font-size": "11px",
+            "font-family": "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+            color: "#fff",
+            "text-outline-width": 1.5,
+            "text-outline-color": "rgba(0,0,0,0.6)",
+            "text-wrap": "wrap",
+            "text-max-width": "120px",
+            width: "label",
+            height: "label",
+            padding: "12px",
+            "background-color": function(ele) { return NODE_COLORS[ele.data("type")] || "#999"; },
+            shape: function(ele) { return NODE_SHAPES[ele.data("type")] || "rectangle"; },
+            "border-width": 2,
+            "border-color": "rgba(255,255,255,0.15)",
+          }
+        },
+        {
+          selector: "node[citation_key_type = 'data']",
+          style: { "border-width": 3, "border-color": "#D97706", "border-opacity": 1 }
+        },
+        {
+          selector: "node[citation_key_type = 'agent']",
+          style: { "border-width": 3, "border-color": "#2563EB", "border-opacity": 1 }
+        },
+        {
+          selector: "node:selected",
+          style: { "border-width": 4, "border-color": "#0969da", "border-opacity": 1 }
+        },
+        {
+          selector: "edge",
+          style: {
+            width: 1.5,
+            "line-color": "#8c959f",
+            "target-arrow-color": "#8c959f",
+            "target-arrow-shape": "triangle",
+            "curve-style": "bezier",
+            label: "data(label)",
+            "font-size": "10px",
+            color: "#636c76",
+            "text-background-color": "#ffffff",
+            "text-background-opacity": 0.85,
+            "text-background-padding": "2px",
+          }
+        },
+        {
+          selector: "edge:selected",
+          style: { "line-color": "#0969da", "target-arrow-color": "#0969da" }
+        },
+      ],
+      layout: { name: "dagre", rankDir: "LR", nodeSep: 45, rankSep: 90, padding: 30 },
+    });
+
+    // Details panel
+    function esc(s) {
+      return String(s)
+        .replace(/&/g,"&amp;").replace(/</g,"&lt;")
+        .replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+    }
+    function row(label, value) {
+      const v = typeof value === "string" ? value : JSON.stringify(value, null, 2);
+      const display = v.length > 500 ? v.slice(0, 500) + "…" : v;
+      return `<div class="dr"><div class="dl">${esc(label)}</div><div class="dv">${esc(display)}</div></div>`;
+    }
+
+    const noSel   = document.getElementById("no-selection");
+    const details = document.getElementById("details");
+    const dlabel  = document.getElementById("details-label");
+    const dbody   = document.getElementById("details-body");
+
+    cy.on("tap", "node", function(evt) {
+      const d = evt.target.data();
+      const color = NODE_COLORS[d.type] || "#999";
+      noSel.style.display = "none";
+      details.style.display = "block";
+      const baseLabel = d.citation_key
+        ? d.label.replace("\\n[" + d.citation_key + "]", "")
+        : d.label;
+      dlabel.textContent = baseLabel;
+      let html = `<div class="dr"><div class="dl">Type</div><div class="dv"><span class="badge" style="background:${color}">${NODE_DISPLAY[d.type] || d.type}</span></div></div>`;
+      if (d.citation_key) {
+        html += `<div class="dr"><div class="dl">Citation key</div><div class="dv" style="font-weight:600;color:#0969da">${esc(d.citation_key)}</div></div>`;
+      }
+      html += row("Agent", d.agent_name);
+      html += row("Run ID", d.run_id);
+      html += row("Timestamp", d.timestamp);
+      html += row("Node ID", d.id);
+      for (const [k, v] of Object.entries(d.extra || {})) { html += row(k, v); }
+      dbody.innerHTML = html;
+    });
+
+    cy.on("tap", function(evt) {
+      if (evt.target === cy) {
+        noSel.style.display = "block";
+        details.style.display = "none";
+        cy.elements().unselect();
+      }
+    });
+  </script>
+</body>
+</html>
+"""
+
+
 @dataclass
 class ProvenanceStore:
     """Central registry that holds the provenance graph and the citation key → node mapping.
@@ -259,7 +509,7 @@ class ProvenanceStore:
         """
 
         def _node_dict(node: ProvenanceNode) -> dict[str, Any]:
-            return {
+            d: dict[str, Any] = {
                 "id": node.id,
                 "type": node.type.value,
                 "label": node.label,
@@ -268,6 +518,10 @@ class ProvenanceStore:
                 "timestamp": node.timestamp.isoformat(),
                 "data": node.data,
             }
+            key = self.citation_key_for_node(node.id)
+            if key is not None:
+                d["citation_key"] = key
+            return d
 
         return {
             "nodes": [_node_dict(n) for n in self.graph.nodes.values()],
@@ -281,3 +535,40 @@ class ProvenanceStore:
             indent: Indentation level passed to :func:`json.dumps`.
         """
         return json.dumps(self.to_json(), indent=indent, default=str)
+
+    def to_html(self, title: str = "Provenance Graph") -> str:
+        """Render the provenance graph as a self-contained interactive HTML page.
+
+        The page uses Cytoscape.js with dagre layout (loaded from CDN) and requires
+        a network connection to render. Click any node to inspect its metadata in the
+        sidebar panel.
+
+        Args:
+            title: Text shown in the browser tab and sidebar header.
+
+        Returns:
+            A complete HTML document as a string. Save to a ``.html`` file or call
+            :meth:`open_in_browser` to open it directly.
+        """
+        # Embed JSON safely inside a <script> block — escape </ to avoid premature
+        # script termination if a node label or data value contains that sequence.
+        graph_data = json.dumps(self.to_json(), default=str).replace("</", "<\\/")
+        return _HTML_TEMPLATE.replace("__TITLE__", title).replace("__GRAPH_DATA__", graph_data)
+
+    def open_in_browser(self, title: str = "Provenance Graph") -> None:
+        """Write the interactive HTML visualisation to a temp file and open it.
+
+        The temp file persists until the OS cleans up the temp directory (the browser
+        needs it to remain readable). A network connection is required to load the
+        Cytoscape.js and dagre CDN scripts.
+
+        Args:
+            title: Page title passed to :meth:`to_html`.
+        """
+        import tempfile
+        import webbrowser
+
+        with tempfile.NamedTemporaryFile(suffix=".html", delete=False, mode="w", encoding="utf-8") as f:
+            f.write(self.to_html(title=title))
+            path = f.name
+        webbrowser.open(f"file://{path}")

@@ -330,6 +330,8 @@ Available as methods on `ProvenanceStore`.
 
 | Method | Description |
 |---|---|
+| `store.to_html(title="Provenance Graph")` | Self-contained interactive HTML page (Cytoscape.js) |
+| `store.open_in_browser(title="Provenance Graph")` | Write HTML to a temp file and open in the default browser |
 | `store.to_mermaid()` | Mermaid flowchart string |
 | `store.to_dot(graph_name="provenance")` | GraphViz DOT string |
 | `store.to_json()` | `dict` with `nodes` and `edges` |

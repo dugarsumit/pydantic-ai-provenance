@@ -5,6 +5,9 @@ A coordinator agent delegates research tasks to a subagent. Both share the same
 ``ProvenanceStore`` (via ``ContextVar`` propagation), so citation keys from the
 subagent's source tools surface in the coordinator's final answer.
 
+After the run the full provenance graph is saved to ``multi_agent_provenance.html``
+and opened in the default browser as an interactive Cytoscape.js visualisation.
+
     uv sync
     ANTHROPIC_API_KEY=... uv run python examples/multi_agent.py
     # or Azure OpenAI:
@@ -15,6 +18,7 @@ from __future__ import annotations
 
 import asyncio
 import random
+import sys
 from pathlib import Path
 
 from _common import example_model, print_citation_verification, print_model_io, require_credentials
@@ -91,6 +95,14 @@ async def main() -> None:
     if d_keys:
         demo = f"Pydantic AI is a framework. [REF|{d_keys[0]}] See [REF|bad_u]."
         await print_citation_verification(store, label="synthetic (valid + bogus keys)", text=demo)
+
+    # Interactive provenance graph
+    html_path = Path(__file__).parent / "multi_agent_provenance.html"
+    html_path.write_text(store.to_html(title="Multi-Agent Provenance Graph"), encoding="utf-8")
+    print(f"\nProvenance graph saved → {html_path}")
+    if "--no-browser" not in sys.argv:
+        print("Opening interactive graph in browser…")
+        store.open_in_browser(title="Multi-Agent Provenance Graph")
 
 
 if __name__ == "__main__":

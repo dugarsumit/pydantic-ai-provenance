@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Multi-Agent Provenance Graph</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{background:#ffffff;color:#1f2328;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;display:flex;height:100vh;overflow:hidden}
+    #cy{flex:1;background:#ffffff}
+    #sidebar{width:290px;background:#f6f8fa;border-left:1px solid #d0d7de;display:flex;flex-direction:column;min-width:0}
+    #title-bar{padding:14px 16px;border-bottom:1px solid #d0d7de}
+    #title-bar h1{font-size:15px;font-weight:600;color:#1f2328;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    #graph-stats{font-size:11px;color:#636c76;margin-top:3px}
+    #legend{padding:10px 16px;border-bottom:1px solid #d0d7de}
+    #legend-title{font-size:11px;font-weight:600;color:#636c76;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+    .legend-item{display:flex;align-items:center;gap:8px;padding:2px 0;font-size:12px;color:#1f2328}
+    .legend-swatch{width:12px;height:12px;border-radius:2px;flex-shrink:0}
+    #no-selection{padding:20px 16px;color:#636c76;font-size:13px;text-align:center}
+    #details{padding:14px 16px;flex:1;overflow-y:auto;display:none}
+    #details-label{font-size:14px;font-weight:600;color:#1f2328;margin-bottom:12px;word-break:break-all}
+    .dr{margin-bottom:10px}
+    .dl{font-size:10px;font-weight:600;color:#636c76;text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px}
+    .dv{font-size:12px;color:#1f2328;background:#eaeef2;padding:5px 7px;border-radius:4px;word-break:break-all;white-space:pre-wrap}
+    .badge{display:inline-block;padding:2px 9px;border-radius:10px;font-size:11px;font-weight:600;color:#fff}
+  </style>
+</head>
+<body>
+  <div id="cy"></div>
+  <div id="sidebar">
+    <div id="title-bar">
+      <h1>Multi-Agent Provenance Graph</h1>
+      <div id="graph-stats"></div>
+    </div>
+    <div id="legend">
+      <div id="legend-title">Node types</div>
+      <div id="legend-items"></div>
+    </div>
+    <div id="no-selection">Click a node to inspect it</div>
+    <div id="details">
+      <div id="details-label"></div>
+      <div id="details-body"></div>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.29.2/cytoscape.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/dagre/0.8.5/dagre.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/cytoscape-dagre@2.5.0/cytoscape-dagre.min.js"></script>
+  <script>
+    const rawGraph = {"nodes": [{"id": "ec386ce2-3e2f-421c-ae96-40b39422aa17", "type": "agent_run", "label": "Agent: coordinator", "agent_name": "coordinator", "run_id": "84c03263-7e47-4ab0-9455-003dbd366892", "timestamp": "2026-04-23T16:56:16.762375+00:00", "data": {"run_id_value": "84c03263-7e47-4ab0-9455-003dbd366892"}}, {"id": "d795dc70-627b-4a53-9479-6a38a61c53a1", "type": "input", "label": "User input", "agent_name": "coordinator", "run_id": "84c03263-7e47-4ab0-9455-003dbd366892", "timestamp": "2026-04-23T16:56:16.762393+00:00", "data": {"prompt": "Find out what Pydantic AI is and give me a detailed summary."}}, {"id": "4887676c-ed07-4442-a9f4-4f6a1917edf4", "type": "model_request", "label": "Model request (step 1)", "agent_name": "coordinator", "run_id": "84c03263-7e47-4ab0-9455-003dbd366892", "timestamp": "2026-04-23T16:56:16.763105+00:00", "data": {"step": 1, "message_count": 1}}, {"id": "094be144-33d8-4769-8b05-8d9da48eec55", "type": "model_response", "label": "Model response (step 1)", "agent_name": "coordinator", "run_id": "84c03263-7e47-4ab0-9455-003dbd366892", "timestamp": "2026-04-23T16:56:22.325852+00:00", "data": {"step": 1, "tool_calls": ["delegate_research"], "model_name": "gpt-5-nano-2025-08-07", "input_tokens": 428, "output_tokens": 412}}, {"id": "09b24556-75e9-44bb-abaf-8de59c9dd02b", "type": "tool_call", "label": "Tool: delegate_research", "agent_name": "coordinator", "run_id": "84c03263-7e47-4ab0-9455-003dbd366892", "timestamp": "2026-04-23T16:56:22.326950+00:00", "data": {"tool_name": "delegate_research", "tool_call_id": "call_IQR1JcQVz87YBwQEFd8SY8ou", "args": {"topic": "Pydantic AI"}}}, {"id": "07d1dee8-b178-4ca7-8833-48d75eb51281", "type": "agent_run", "label": "Agent: researcher", "agent_name": "researcher", "run_id": "25a87d64-8667-4174-88ff-2d62d2c930cd", "timestamp": "2026-04-23T16:56:22.328832+00:00", "data": {"run_id_value": "25a87d64-8667-4174-88ff-2d62d2c930cd"}}, {"id": "6bb4537f-92b4-41ee-9c11-f1adff5c3ce3", "type": "input", "label": "User input", "agent_name": "researcher", "run_id": "25a87d64-8667-4174-88ff-2d62d2c930cd", "timestamp": "2026-04-23T16:56:22.328855+00:00", "data": {"prompt": "Research this topic and summarise: Pydantic AI"}}, {"id": "2430a940-dae0-4573-a56f-5c5d3e621c0d", "type": "model_request", "label": "Model request (step 1)", "agent_name": "researcher", "run_id": "25a87d64-8667-4174-88ff-2d62d2c930cd", "timestamp": "2026-04-23T16:56:22.329894+00:00", "data": {"step": 1, "message_count": 1}}, {"id": "4881f5a5-f6e2-4675-8af7-5e8a62142206", "type": "model_response", "label": "Model response (step 1)", "agent_name": "researcher", "run_id": "25a87d64-8667-4174-88ff-2d62d2c930cd", "timestamp": "2026-04-23T16:56:38.372642+00:00", "data": {"step": 1, "tool_calls": ["fetch_url", "fetch_url", "fetch_url"], "model_name": "gpt-5-nano-2025-08-07", "input_tokens": 428, "output_tokens": 789}}, {"id": "42923839-03c3-4517-820a-7ca07e35a904", "type": "data_read", "label": "[source] Tool: fetch_url", "agent_name": "researcher", "run_id": "25a87d64-8667-4174-88ff-2d62d2c930cd", "timestamp": "2026-04-23T16:56:38.373522+00:00", "data": {"tool_name": "fetch_url", "tool_call_id": "call_NLqlrlG5KBtokZvEwqNUkp5w", "args": {"url": "https://pydantic.ai"}, "file_path": "https://pydantic.ai"}, "citation_key": "d_1"}, {"id": "ac8b3c57-ff4f-4b53-91ac-6130f6465991", "type": "data_read", "label": "[source] Tool: fetch_url", "agent_name": "researcher", "run_id": "25a87d64-8667-4174-88ff-2d62d2c930cd", "timestamp": "2026-04-23T16:56:38.373648+00:00", "data": {"tool_name": "fetch_url", "tool_call_id": "call_VbL6OOUaEWjkIc4jap9rklm2", "args": {"url": "https://www.pydantic.ai"}, "file_path": "https://www.pydantic.ai"}, "citation_key": "d_2"}, {"id": "268f2f1d-b703-4aa6-b29f-99ce5255e3b6", "type": "data_read", "label": "[source] Tool: fetch_url", "agent_name": "researcher", "run_id": "25a87d64-8667-4174-88ff-2d62d2c930cd", "timestamp": "2026-04-23T16:56:38.373736+00:00", "data": {"tool_name": "fetch_url", "tool_call_id": "call_ce4uSjj5P2gxZHTXer1I7mCP", "args": {"url": "https://pydantic.dev"}, "file_path": "https://pydantic.dev"}, "citation_key": "d_3"}, {"id": "5518c9ee-7f8d-4f72-be99-bf3afa8531a6", "type": "tool_result", "label": "Result: fetch_url", "agent_name": "researcher", "run_id": "25a87d64-8667-4174-88ff-2d62d2c930cd", "timestamp": "2026-04-23T16:56:38.375080+00:00", "data": {"tool_name": "fetch_url", "result": "Pydantic AI integrates seamlessly with Python's data modeling tools.", "formatted": true}}, {"id": "34e424fb-0ddf-4318-8a21-d53e9dec8d58", "type": "tool_result", "label": "Result: fetch_url", "agent_name": "researcher", "run_id": "25a87d64-8667-4174-88ff-2d62d2c930cd", "timestamp": "2026-04-23T16:56:38.375204+00:00", "data": {"tool_name": "fetch_url", "result": "Pydantic AI builds upon Pydantic for powerful data validation.", "formatted": true}}, {"id": "28df23bb-270f-437c-b3a6-0f5e2e4ba74c", "type": "tool_result", "label": "Result: fetch_url", "agent_name": "researcher", "run_id": "25a87d64-8667-4174-88ff-2d62d2c930cd", "timestamp": "2026-04-23T16:56:38.375280+00:00", "data": {"tool_name": "fetch_url", "result": "Pydantic AI builds upon Pydantic for powerful data validation.", "formatted": true}}, {"id": "c0ca1be7-b5f1-45f3-a5b2-90afff7adfd4", "type": "model_request", "label": "Model request (step 2)", "agent_name": "researcher", "run_id": "25a87d64-8667-4174-88ff-2d62d2c930cd", "timestamp": "2026-04-23T16:56:38.376029+00:00", "data": {"step": 2, "message_count": 3}}, {"id": "744aa110-36ba-437c-8dde-b7b59987b488", "type": "model_response", "label": "Model response (step 2)", "agent_name": "researcher", "run_id": "25a87d64-8667-4174-88ff-2d62d2c930cd", "timestamp": "2026-04-23T16:56:55.997746+00:00", "data": {"step": 2, "text": "ModelResponse(parts=[TextPart(content=\"- Pydantic AI integrates seamlessly with Python's data modeling tools. [REF|d_1]\\n\\n- Pydantic AI builds upon Pydantic for powerful data validation. [REF|d_2|d_3]\")], usage=RequestUsage(input_tokens=585, output_tokens=1785, details={'accepted_prediction_tokens': 0, 'audio_tokens': 0, 'reasoning_tokens': 1728, 'rejected_prediction_tokens': 0}), model_name='gpt-5-nano-2025-08-07', timestamp=datetime.datetime(2026, 4, 23, 16, 56, 55, 997253, tzinfo=datetime.timezone.utc), provider_name='azure', provider_url='https://jenly-staging-sweden.cognitiveservices.azure.com/openai/', provider_details={'finish_reason': 'stop', 'timestamp': datetime.datetime(2026, 4, 23, 16, 56, 38, tzinfo=TzInfo(0))}, provider_response_id='chatcmpl-DXrduOGl1h5rHoUrmFyTTOjJo0Un8', finish_reason='stop', run_id='019dbb45-6c38-740a-892a-c6aaf7da2d84')", "tool_calls": [], "model_name": "gpt-5-nano-2025-08-07", "input_tokens": 585, "output_tokens": 1785}}, {"id": "a73e8625-dbf0-4d46-9102-f46262800cf3", "type": "final_output", "label": "Final output: researcher", "agent_name": "researcher", "run_id": "25a87d64-8667-4174-88ff-2d62d2c930cd", "timestamp": "2026-04-23T16:56:55.998684+00:00", "data": {"output": "- Pydantic AI integrates seamlessly with Python's data modeling tools. [REF|d_1]\n\n- Pydantic AI builds upon Pydantic for powerful data validation. [REF|d_2|d_3]"}, "citation_key": "a_4"}, {"id": "57270b7d-276b-458d-8d84-49270a67b103", "type": "tool_result", "label": "Result: delegate_research", "agent_name": "coordinator", "run_id": "84c03263-7e47-4ab0-9455-003dbd366892", "timestamp": "2026-04-23T16:56:55.999810+00:00", "data": {"tool_name": "delegate_research", "result": "- Pydantic AI integrates seamlessly with Python's data modeling tools. [REF|d_1]\n\n- Pydantic AI builds upon Pydantic for powerful data validation. [REF|d_2|d_3]", "formatted": true}}, {"id": "2c8b0743-49c5-4251-a020-5a87721d677d", "type": "model_request", "label": "Model request (step 2)", "agent_name": "coordinator", "run_id": "84c03263-7e47-4ab0-9455-003dbd366892", "timestamp": "2026-04-23T16:56:56.000730+00:00", "data": {"step": 2, "message_count": 3}}, {"id": "9d03e954-8abb-4e81-b27d-12c75e5e9e56", "type": "model_response", "label": "Model response (step 2)", "agent_name": "coordinator", "run_id": "84c03263-7e47-4ab0-9455-003dbd366892", "timestamp": "2026-04-23T16:57:12.642037+00:00", "data": {"step": 2, "text": "ModelResponse(parts=[TextPart(content=\"- Pydantic AI integrates seamlessly with Python's data modeling tools. [REF|d_1]\\n\\n- Pydantic AI builds upon Pydantic for powerful data validation. [REF|d_2|d_3]\")], usage=RequestUsage(input_tokens=515, output_tokens=1721, details={'accepted_prediction_tokens': 0, 'audio_tokens': 0, 'reasoning_tokens': 1664, 'rejected_prediction_tokens': 0}), model_name='gpt-5-nano-2025-08-07', timestamp=datetime.datetime(2026, 4, 23, 16, 57, 12, 641025, tzinfo=datetime.timezone.utc), provider_name='azure', provider_url='https://jenly-staging-sweden.cognitiveservices.azure.com/openai/', provider_details={'finish_reason': 'stop', 'timestamp': datetime.datetime(2026, 4, 23, 16, 56, 56, tzinfo=TzInfo(0))}, provider_response_id='chatcmpl-DXreCJLliX2zUHXvbhh0LSFsyfg89', finish_reason='stop', run_id='019dbb45-5677-75f7-9336-6dd19dc680d1')", "tool_calls": [], "model_name": "gpt-5-nano-2025-08-07", "input_tokens": 515, "output_tokens": 1721}}, {"id": "a9f84dcf-453f-49dc-bffd-3c14f0ecc9f9", "type": "final_output", "label": "Final output: coordinator", "agent_name": "coordinator", "run_id": "84c03263-7e47-4ab0-9455-003dbd366892", "timestamp": "2026-04-23T16:57:12.643469+00:00", "data": {"output": "- Pydantic AI integrates seamlessly with Python's data modeling tools. [REF|d_1]\n\n- Pydantic AI builds upon Pydantic for powerful data validation. [REF|d_2|d_3]"}, "citation_key": "a_5"}], "edges": [{"source": "ec386ce2-3e2f-421c-ae96-40b39422aa17", "target": "d795dc70-627b-4a53-9479-6a38a61c53a1", "label": "starts_with"}, {"source": "d795dc70-627b-4a53-9479-6a38a61c53a1", "target": "4887676c-ed07-4442-a9f4-4f6a1917edf4", "label": "feeds_into"}, {"source": "4887676c-ed07-4442-a9f4-4f6a1917edf4", "target": "094be144-33d8-4769-8b05-8d9da48eec55", "label": "produces"}, {"source": "094be144-33d8-4769-8b05-8d9da48eec55", "target": "09b24556-75e9-44bb-abaf-8de59c9dd02b", "label": "calls"}, {"source": "09b24556-75e9-44bb-abaf-8de59c9dd02b", "target": "07d1dee8-b178-4ca7-8833-48d75eb51281", "label": "delegates_to"}, {"source": "07d1dee8-b178-4ca7-8833-48d75eb51281", "target": "6bb4537f-92b4-41ee-9c11-f1adff5c3ce3", "label": "starts_with"}, {"source": "6bb4537f-92b4-41ee-9c11-f1adff5c3ce3", "target": "2430a940-dae0-4573-a56f-5c5d3e621c0d", "label": "feeds_into"}, {"source": "2430a940-dae0-4573-a56f-5c5d3e621c0d", "target": "4881f5a5-f6e2-4675-8af7-5e8a62142206", "label": "produces"}, {"source": "4881f5a5-f6e2-4675-8af7-5e8a62142206", "target": "42923839-03c3-4517-820a-7ca07e35a904", "label": "calls"}, {"source": "4881f5a5-f6e2-4675-8af7-5e8a62142206", "target": "ac8b3c57-ff4f-4b53-91ac-6130f6465991", "label": "calls"}, {"source": "4881f5a5-f6e2-4675-8af7-5e8a62142206", "target": "268f2f1d-b703-4aa6-b29f-99ce5255e3b6", "label": "calls"}, {"source": "42923839-03c3-4517-820a-7ca07e35a904", "target": "5518c9ee-7f8d-4f72-be99-bf3afa8531a6", "label": "returns"}, {"source": "ac8b3c57-ff4f-4b53-91ac-6130f6465991", "target": "34e424fb-0ddf-4318-8a21-d53e9dec8d58", "label": "returns"}, {"source": "268f2f1d-b703-4aa6-b29f-99ce5255e3b6", "target": "28df23bb-270f-437c-b3a6-0f5e2e4ba74c", "label": "returns"}, {"source": "5518c9ee-7f8d-4f72-be99-bf3afa8531a6", "target": "c0ca1be7-b5f1-45f3-a5b2-90afff7adfd4", "label": "feeds_into"}, {"source": "34e424fb-0ddf-4318-8a21-d53e9dec8d58", "target": "c0ca1be7-b5f1-45f3-a5b2-90afff7adfd4", "label": "feeds_into"}, {"source": "28df23bb-270f-437c-b3a6-0f5e2e4ba74c", "target": "c0ca1be7-b5f1-45f3-a5b2-90afff7adfd4", "label": "feeds_into"}, {"source": "c0ca1be7-b5f1-45f3-a5b2-90afff7adfd4", "target": "744aa110-36ba-437c-8dde-b7b59987b488", "label": "produces"}, {"source": "42923839-03c3-4517-820a-7ca07e35a904", "target": "744aa110-36ba-437c-8dde-b7b59987b488", "label": "cited_in"}, {"source": "ac8b3c57-ff4f-4b53-91ac-6130f6465991", "target": "744aa110-36ba-437c-8dde-b7b59987b488", "label": "cited_in"}, {"source": "268f2f1d-b703-4aa6-b29f-99ce5255e3b6", "target": "744aa110-36ba-437c-8dde-b7b59987b488", "label": "cited_in"}, {"source": "744aa110-36ba-437c-8dde-b7b59987b488", "target": "a73e8625-dbf0-4d46-9102-f46262800cf3", "label": "produces"}, {"source": "42923839-03c3-4517-820a-7ca07e35a904", "target": "a73e8625-dbf0-4d46-9102-f46262800cf3", "label": "cited_in"}, {"source": "ac8b3c57-ff4f-4b53-91ac-6130f6465991", "target": "a73e8625-dbf0-4d46-9102-f46262800cf3", "label": "cited_in"}, {"source": "268f2f1d-b703-4aa6-b29f-99ce5255e3b6", "target": "a73e8625-dbf0-4d46-9102-f46262800cf3", "label": "cited_in"}, {"source": "09b24556-75e9-44bb-abaf-8de59c9dd02b", "target": "57270b7d-276b-458d-8d84-49270a67b103", "label": "returns"}, {"source": "57270b7d-276b-458d-8d84-49270a67b103", "target": "2c8b0743-49c5-4251-a020-5a87721d677d", "label": "feeds_into"}, {"source": "2c8b0743-49c5-4251-a020-5a87721d677d", "target": "9d03e954-8abb-4e81-b27d-12c75e5e9e56", "label": "produces"}, {"source": "42923839-03c3-4517-820a-7ca07e35a904", "target": "9d03e954-8abb-4e81-b27d-12c75e5e9e56", "label": "cited_in"}, {"source": "ac8b3c57-ff4f-4b53-91ac-6130f6465991", "target": "9d03e954-8abb-4e81-b27d-12c75e5e9e56", "label": "cited_in"}, {"source": "268f2f1d-b703-4aa6-b29f-99ce5255e3b6", "target": "9d03e954-8abb-4e81-b27d-12c75e5e9e56", "label": "cited_in"}, {"source": "9d03e954-8abb-4e81-b27d-12c75e5e9e56", "target": "a9f84dcf-453f-49dc-bffd-3c14f0ecc9f9", "label": "produces"}, {"source": "42923839-03c3-4517-820a-7ca07e35a904", "target": "a9f84dcf-453f-49dc-bffd-3c14f0ecc9f9", "label": "cited_in"}, {"source": "ac8b3c57-ff4f-4b53-91ac-6130f6465991", "target": "a9f84dcf-453f-49dc-bffd-3c14f0ecc9f9", "label": "cited_in"}, {"source": "268f2f1d-b703-4aa6-b29f-99ce5255e3b6", "target": "a9f84dcf-453f-49dc-bffd-3c14f0ecc9f9", "label": "cited_in"}]};
+
+    const NODE_COLORS = {
+      input:          "#4A90D9",
+      data_read:      "#27AE60",
+      tool_call:      "#E67E22",
+      tool_result:    "#F39C12",
+      model_request:  "#8E44AD",
+      model_response: "#9B59B6",
+      agent_run:      "#2C3E50",
+      final_output:   "#E74C3C",
+    };
+    const NODE_SHAPES = {
+      input:          "round-rectangle",
+      data_read:      "barrel",
+      tool_call:      "rectangle",
+      tool_result:    "rectangle",
+      model_request:  "diamond",
+      model_response: "diamond",
+      agent_run:      "cut-rectangle",
+      final_output:   "ellipse",
+    };
+    const NODE_DISPLAY = {
+      input:          "Input",
+      data_read:      "Data Read",
+      tool_call:      "Tool Call",
+      tool_result:    "Tool Result",
+      model_request:  "Model Request",
+      model_response: "Model Response",
+      agent_run:      "Agent Run",
+      final_output:   "Final Output",
+    };
+
+    // Build legend — node types (only those present in this graph)
+    const presentTypes = [...new Set(rawGraph.nodes.map(n => n.type))];
+    const legendItems = document.getElementById("legend-items");
+    for (const t of Object.keys(NODE_COLORS)) {
+      if (!presentTypes.includes(t)) continue;
+      const d = document.createElement("div");
+      d.className = "legend-item";
+      d.innerHTML = `<div class="legend-swatch" style="background:${NODE_COLORS[t]}"></div><span>${NODE_DISPLAY[t] || t}</span>`;
+      legendItems.appendChild(d);
+    }
+
+    // Build legend — citation key borders (only if any keys exist in this graph)
+    const hasDataKey  = rawGraph.nodes.some(n => n.citation_key && n.citation_key.startsWith("d_"));
+    const hasAgentKey = rawGraph.nodes.some(n => n.citation_key && n.citation_key.startsWith("a_"));
+    if (hasDataKey || hasAgentKey) {
+      const ckSection = document.createElement("div");
+      ckSection.style.cssText = "margin-top:10px;padding-top:8px;border-top:1px solid #d0d7de";
+      ckSection.innerHTML = `<div style="font-size:11px;font-weight:600;color:#636c76;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Citation keys</div>`;
+      if (hasDataKey) {
+        ckSection.innerHTML += `<div class="legend-item"><div class="legend-swatch" style="background:transparent;border:3px solid #D97706"></div><span>Data source (d_*)</span></div>`;
+      }
+      if (hasAgentKey) {
+        ckSection.innerHTML += `<div class="legend-item"><div class="legend-swatch" style="background:transparent;border:3px solid #2563EB"></div><span>Agent output (a_*)</span></div>`;
+      }
+      legendItems.appendChild(ckSection);
+    }
+
+    document.getElementById("graph-stats").textContent =
+      rawGraph.nodes.length + " nodes · " + rawGraph.edges.length + " edges";
+
+    // Build Cytoscape elements
+    const elements = [];
+    for (const node of rawGraph.nodes) {
+      const ck = node.citation_key || null;
+      const ckType = ck ? (ck.startsWith("d_") ? "data" : "agent") : null;
+      const displayLabel = ck ? node.label + "\n[" + ck + "]" : node.label;
+      elements.push({ data: {
+        id: node.id, label: displayLabel, type: node.type,
+        agent_name: node.agent_name, run_id: node.run_id,
+        timestamp: node.timestamp, extra: node.data || {},
+        citation_key: ck, citation_key_type: ckType,
+      }});
+    }
+    for (const edge of rawGraph.edges) {
+      elements.push({ data: {
+        id: edge.source + "_" + edge.target,
+        source: edge.source, target: edge.target, label: edge.label || "",
+      }});
+    }
+
+    cytoscape.use(cytoscapeDagre);
+    const cy = cytoscape({
+      container: document.getElementById("cy"),
+      elements,
+      style: [
+        {
+          selector: "node",
+          style: {
+            label: "data(label)",
+            "text-valign": "center",
+            "text-halign": "center",
+            "font-size": "11px",
+            "font-family": "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+            color: "#fff",
+            "text-outline-width": 1.5,
+            "text-outline-color": "rgba(0,0,0,0.6)",
+            "text-wrap": "wrap",
+            "text-max-width": "120px",
+            width: "label",
+            height: "label",
+            padding: "12px",
+            "background-color": function(ele) { return NODE_COLORS[ele.data("type")] || "#999"; },
+            shape: function(ele) { return NODE_SHAPES[ele.data("type")] || "rectangle"; },
+            "border-width": 2,
+            "border-color": "rgba(255,255,255,0.15)",
+          }
+        },
+        {
+          selector: "node[citation_key_type = 'data']",
+          style: { "border-width": 3, "border-color": "#D97706", "border-opacity": 1 }
+        },
+        {
+          selector: "node[citation_key_type = 'agent']",
+          style: { "border-width": 3, "border-color": "#2563EB", "border-opacity": 1 }
+        },
+        {
+          selector: "node:selected",
+          style: { "border-width": 4, "border-color": "#0969da", "border-opacity": 1 }
+        },
+        {
+          selector: "edge",
+          style: {
+            width: 1.5,
+            "line-color": "#8c959f",
+            "target-arrow-color": "#8c959f",
+            "target-arrow-shape": "triangle",
+            "curve-style": "bezier",
+            label: "data(label)",
+            "font-size": "10px",
+            color: "#636c76",
+            "text-background-color": "#ffffff",
+            "text-background-opacity": 0.85,
+            "text-background-padding": "2px",
+          }
+        },
+        {
+          selector: "edge:selected",
+          style: { "line-color": "#0969da", "target-arrow-color": "#0969da" }
+        },
+      ],
+      layout: { name: "dagre", rankDir: "LR", nodeSep: 45, rankSep: 90, padding: 30 },
+    });
+
+    // Details panel
+    function esc(s) {
+      return String(s)
+        .replace(/&/g,"&amp;").replace(/</g,"&lt;")
+        .replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+    }
+    function row(label, value) {
+      const v = typeof value === "string" ? value : JSON.stringify(value, null, 2);
+      const display = v.length > 500 ? v.slice(0, 500) + "…" : v;
+      return `<div class="dr"><div class="dl">${esc(label)}</div><div class="dv">${esc(display)}</div></div>`;
+    }
+
+    const noSel   = document.getElementById("no-selection");
+    const details = document.getElementById("details");
+    const dlabel  = document.getElementById("details-label");
+    const dbody   = document.getElementById("details-body");
+
+    cy.on("tap", "node", function(evt) {
+      const d = evt.target.data();
+      const color = NODE_COLORS[d.type] || "#999";
+      noSel.style.display = "none";
+      details.style.display = "block";
+      const baseLabel = d.citation_key
+        ? d.label.replace("\n[" + d.citation_key + "]", "")
+        : d.label;
+      dlabel.textContent = baseLabel;
+      let html = `<div class="dr"><div class="dl">Type</div><div class="dv"><span class="badge" style="background:${color}">${NODE_DISPLAY[d.type] || d.type}</span></div></div>`;
+      if (d.citation_key) {
+        html += `<div class="dr"><div class="dl">Citation key</div><div class="dv" style="font-weight:600;color:#0969da">${esc(d.citation_key)}</div></div>`;
+      }
+      html += row("Agent", d.agent_name);
+      html += row("Run ID", d.run_id);
+      html += row("Timestamp", d.timestamp);
+      html += row("Node ID", d.id);
+      for (const [k, v] of Object.entries(d.extra || {})) { html += row(k, v); }
+      dbody.innerHTML = html;
+    });
+
+    cy.on("tap", function(evt) {
+      if (evt.target === cy) {
+        noSel.style.display = "block";
+        details.style.display = "none";
+        cy.elements().unselect();
+      }
+    });
+  </script>
+</body>
+</html>

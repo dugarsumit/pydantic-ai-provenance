@@ -1,6 +1,32 @@
 # Visualization
 
-The provenance graph can be exported in three formats: Mermaid, GraphViz DOT, and JSON.
+The provenance graph can be exported as an interactive HTML page, a Mermaid flowchart, a GraphViz DOT file, or raw JSON.
+
+---
+
+## Interactive HTML
+
+`store.to_html()` returns a self-contained HTML page with an interactive Cytoscape.js graph. Click any node to see its full metadata in the sidebar.
+
+```python
+# Open immediately in the default browser
+store.open_in_browser()
+
+# Or save to a file
+html = store.to_html(title="My Run")
+with open("provenance.html", "w") as f:
+    f.write(html)
+```
+
+The page loads Cytoscape.js and the dagre layout plugin from CDN, so a network connection is required at render time. The generated file is otherwise completely self-contained and works offline once loaded.
+
+### Features
+
+- Left-to-right dagre layout matching the natural data-flow direction
+- Color-coded nodes by type (same palette as Mermaid / DOT)
+- Distinct node shapes per type: barrel for data sources, diamond for model steps, ellipse for final outputs, etc.
+- Sidebar legend showing only the node types present in the graph
+- Click any node to inspect its label, type, agent, run ID, timestamp, and any extra metadata
 
 ---
 
