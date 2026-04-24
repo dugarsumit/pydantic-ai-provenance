@@ -23,5 +23,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `to_mermaid`, `to_dot`, `to_json`, `to_json_str`: provenance graph visualisation.
 - Multi-agent support: subagent outputs propagated through shared store via `contextvars`.
 
-[Unreleased]: https://github.com/sumitdugar/pydantic-ai-provenance/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/sumitdugar/pydantic-ai-provenance/releases/tag/v0.1.0
+[Unreleased]: https://github.com/dugarsumit/pydantic-ai-provenance/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/dugarsumit/pydantic-ai-provenance/releases/tag/v0.1.0

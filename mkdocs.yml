@@ -1,8 +1,8 @@
 site_name: pydantic-ai-provenance
 site_description: Provenance tracking and citation verification for pydantic-ai agents
-site_url: https://sumitdugar.github.io/pydantic-ai-provenance
-repo_url: https://github.com/sumitdugar/pydantic-ai-provenance
-repo_name: sumitdugar/pydantic-ai-provenance
+site_url: https://dugarsumit.github.io/pydantic-ai-provenance
+repo_url: https://github.com/dugarsumit/pydantic-ai-provenance
+repo_name: dugarsumit/pydantic-ai-provenance
 edit_uri: edit/main/docs/
 
 theme:

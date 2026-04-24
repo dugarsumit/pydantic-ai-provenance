@@ -29,16 +29,15 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
-    "pydantic-ai-slim[anthropic,openai]>=1.80",
-    "python-dotenv>=1.0.0",
+    "pydantic-ai-slim>=1.80",
     "scikit-learn>=1.2.0",
 ]
 
 [project.urls]
-Homepage = "https://github.com/sumitdugar/pydantic-ai-provenance"
-Repository = "https://github.com/sumitdugar/pydantic-ai-provenance"
-Issues = "https://github.com/sumitdugar/pydantic-ai-provenance/issues"
-Changelog = "https://github.com/sumitdugar/pydantic-ai-provenance/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/dugarsumit/pydantic-ai-provenance"
+Repository = "https://github.com/dugarsumit/pydantic-ai-provenance"
+Issues = "https://github.com/dugarsumit/pydantic-ai-provenance/issues"
+Changelog = "https://github.com/dugarsumit/pydantic-ai-provenance/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
 dev = [
@@ -49,6 +48,10 @@ dev = [
     "pre-commit>=3.0",
     "mkdocs>=1.6",
     "mkdocs-material>=9.5",
+]
+examples = [
+    "pydantic-ai-slim[anthropic,openai]>=1.80",
+    "python-dotenv>=1.0.0",
 ]
 
 [build-system]

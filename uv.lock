@@ -843,8 +843,7 @@ name = "pydantic-ai-provenance"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
-    { name = "pydantic-ai-slim", extra = ["anthropic", "openai"] },
-    { name = "python-dotenv" },
+    { name = "pydantic-ai-slim" },
     { name = "scikit-learn" },
 ]
 
@@ -858,21 +857,26 @@ dev = [
     { name = "pytest-cov" },
     { name = "ruff" },
 ]
+examples = [
+    { name = "pydantic-ai-slim", extra = ["anthropic", "openai"] },
+    { name = "python-dotenv" },
+]
 
 [package.metadata]
 requires-dist = [
     { name = "mkdocs", marker = "extra == 'dev'", specifier = ">=1.6" },
     { name = "mkdocs-material", marker = "extra == 'dev'", specifier = ">=9.5" },
     { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=3.0" },
-    { name = "pydantic-ai-slim", extras = ["anthropic", "openai"], specifier = ">=1.80" },
+    { name = "pydantic-ai-slim", specifier = ">=1.80" },
+    { name = "pydantic-ai-slim", extras = ["anthropic", "openai"], marker = "extra == 'examples'", specifier = ">=1.80" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
     { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.24" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=5.0" },
-    { name = "python-dotenv", specifier = ">=1.0.0" },
+    { name = "python-dotenv", marker = "extra == 'examples'", specifier = ">=1.0.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.9" },
     { name = "scikit-learn", specifier = ">=1.2.0" },
 ]
-provides-extras = ["dev"]
+provides-extras = ["dev", "examples"]
 
 [[package]]
 name = "pydantic-ai-slim"

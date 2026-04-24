@@ -29,11 +29,11 @@ uv add pydantic-ai-provenance
 **Install directly from GitHub** (latest development version):
 
 ```bash
-pip install git+https://github.com/sumitdugar/pydantic-ai-provenance.git
+pip install git+https://github.com/dugarsumit/pydantic-ai-provenance.git
 ```
 
 ```bash
-uv add git+https://github.com/sumitdugar/pydantic-ai-provenance
+uv add git+https://github.com/dugarsumit/pydantic-ai-provenance
 ```
 
 **Requirements:** Python ≥ 3.12, pydantic-ai ≥ 1.80.
@@ -208,7 +208,7 @@ ANTHROPIC_API_KEY=... uv run python examples/multi_agent.py
 ## Development
 
 ```bash
-git clone https://github.com/sumitdugar/pydantic-ai-provenance.git
+git clone https://github.com/dugarsumit/pydantic-ai-provenance.git
 cd pydantic-ai-provenance
 uv sync --extra dev
 uv run pytest

@@ -7,7 +7,7 @@ Thank you for considering a contribution! Below are the steps to get up and runn
 This project uses [uv](https://docs.astral.sh/uv/) for dependency management.
 
 ```bash
-git clone https://github.com/sumitdugar/pydantic-ai-provenance.git
+git clone https://github.com/dugarsumit/pydantic-ai-provenance.git
 cd pydantic-ai-provenance
 
 # Install all dependencies including dev extras
