@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+    <url>
+         <loc>https://dugarsumit.github.io/pydantic-ai-provenance/</loc>
+         <lastmod>2026-04-24</lastmod>
+    </url>
+    <url>
+         <loc>https://dugarsumit.github.io/pydantic-ai-provenance/api-reference/</loc>
+         <lastmod>2026-04-24</lastmod>
+    </url>
+    <url>
+         <loc>https://dugarsumit.github.io/pydantic-ai-provenance/getting-started/</loc>
+         <lastmod>2026-04-24</lastmod>
+    </url>
+    <url>
+         <loc>https://dugarsumit.github.io/pydantic-ai-provenance/guides/citation-format/</loc>
+         <lastmod>2026-04-24</lastmod>
+    </url>
+    <url>
+         <loc>https://dugarsumit.github.io/pydantic-ai-provenance/guides/multi-agent/</loc>
+         <lastmod>2026-04-24</lastmod>
+    </url>
+    <url>
+         <loc>https://dugarsumit.github.io/pydantic-ai-provenance/guides/verification/</loc>
+         <lastmod>2026-04-24</lastmod>
+    </url>
+    <url>
+         <loc>https://dugarsumit.github.io/pydantic-ai-provenance/guides/visualization/</loc>
+         <lastmod>2026-04-24</lastmod>
+    </url>
+</urlset>
