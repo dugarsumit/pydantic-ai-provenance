@@ -1,6 +1,6 @@
 # pydantic-ai-provenance
 
-[![codecov](https://codecov.io/github/dugarsumit/pydantic-ai-provenance/graph/badge.svg?token=MJKO5VIBUK)](https://codecov.io/github/dugarsumit/pydantic-ai-provenance)
+[![codecov](https://codecov.io/github/dugarsumit/pydantic-ai-provenance/graph/badge.svg?token=MJKO5VIBUK)](https://codecov.io/github/dugarsumit/pydantic-ai-provenance) [![License](https://img.shields.io/github/license/sumitdugar/pydantic-ai-provenance)](https://github.com/sumitdugar/pydantic-ai-provenance/blob/main/LICENSE) [![Docs](https://img.shields.io/badge/docs-mkdocs-526CFE?logo=mkdocs&logoColor=white)](https://sumitdugar.github.io/pydantic-ai-provenance/) [![Python versions](https://img.shields.io/pypi/pyversions/pydantic-ai-provenance)](https://pypi.org/project/pydantic-ai-provenance/)
 
 **Provenance tracking and citation verification for [pydantic-ai](https://ai.pydantic.dev/) agents.**
 
