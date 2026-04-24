@@ -1,5 +1,7 @@
 # pydantic-ai-provenance
 
+[![codecov](https://codecov.io/github/dugarsumit/pydantic-ai-provenance/graph/badge.svg?token=MJKO5VIBUK)](https://codecov.io/github/dugarsumit/pydantic-ai-provenance)
+
 **Provenance tracking and citation verification for [pydantic-ai](https://ai.pydantic.dev/) agents.**
 
 Attach `ProvenanceCapability` to any pydantic-ai agent and get:
