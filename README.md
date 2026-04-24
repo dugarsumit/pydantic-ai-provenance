@@ -34,7 +34,7 @@ pip install git+https://github.com/sumitdugar/pydantic-ai-provenance.git
 uv add git+https://github.com/sumitdugar/pydantic-ai-provenance
 ```
 
-**Requirements:** Python ≥ 3.10, pydantic-ai ≥ 1.80.
+**Requirements:** Python ≥ 3.12, pydantic-ai ≥ 1.80.
 
 ---
 

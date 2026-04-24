@@ -12,6 +12,7 @@ help:
 
 install:
 	uv sync --active --all-groups --all-extras
+	uv lock
 
 lint:
 	uv run --no-sync --active ruff check

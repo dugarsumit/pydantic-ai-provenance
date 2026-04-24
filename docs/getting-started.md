@@ -12,7 +12,7 @@ Or with [uv](https://docs.astral.sh/uv/):
 uv add pydantic-ai-provenance
 ```
 
-**Requirements:** Python ≥ 3.10 and pydantic-ai ≥ 1.80.
+**Requirements:** Python ≥ 3.12 and pydantic-ai ≥ 1.80.
 
 ---
 
